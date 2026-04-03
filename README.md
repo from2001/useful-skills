@@ -24,6 +24,14 @@ Translate PowerPoint (.pptx) presentations between any language pair while prese
 /plugin install translate-pptx@from2001-useful-skills
 ```
 
+### translate-pdf
+
+Translate PDF documents between any language pair while preserving layout, images, and formatting.
+
+```
+/plugin install translate-pdf@from2001-useful-skills
+```
+
 ## License
 
 MIT
