@@ -5,14 +5,15 @@ description: "Translate PDF documents between any language pair while preserving
 
 # Translate PDF
 
-Translate PDF documents while preserving layout and visual elements.
+Translate PDF documents while preserving layout and visual elements. Text is extracted as grouped spans, translated at the group level, then redacted and re-inserted.
 
-All intermediate files (JSON) are written to a temporary directory and cleaned up automatically.
+All intermediate files are written to a temporary directory and cleaned up automatically.
 
 ## Prerequisites
 
-- `pymupdf` — PDF manipulation (text extraction, redaction, text insertion)
-- `markitdown[pdf]` — text extraction for review
+```bash
+pip install pymupdf "markitdown[pdf]"
+```
 
 ## Workflow
 
@@ -26,22 +27,17 @@ Identify the source language and total text volume.
 
 ### 2. Confirm the target language
 
-If the user has not specified a target language, ask them to choose using `AskUserQuestion`:
+If the user has not specified a target language, ask using `AskUserQuestion`:
 
-**Options:**
-1. Japanese
-2. Chinese
-3. Spanish
-4. Others (ask the user to specify)
-
-Map the selection to a language code: `ja`, `zh`, `es`, etc.
+1. Japanese (`ja`)
+2. Chinese (`zh`)
+3. Spanish (`es`)
+4. Other (ask user to specify)
 
 ### 3. Create a temporary working directory
 
-Use Python's `tempfile.mkdtemp()` to create a temp directory for all intermediate files.
-
 ```python
-import tempfile
+import tempfile, os
 tmpdir = tempfile.mkdtemp(prefix="translate_pdf_")
 texts_json = os.path.join(tmpdir, "texts.json")
 ```
@@ -52,41 +48,37 @@ texts_json = os.path.join(tmpdir, "texts.json")
 python scripts/extract_texts.py input.pdf $tmpdir/texts.json
 ```
 
-This produces a JSON file with all text spans from each page, each with its bounding box, font info, and page number.
+Produces a JSON file with two arrays:
+
+- **`groups`** — Logical text lines, each with `group_id`, `page`, `combined_text`, `bbox`, `font`, `size`, `color`, `span_count`
+- **`spans`** — Individual text spans, each linked to a group via `group_id`
 
 ### 5. Translate
 
-Read `texts.json` and translate each text span. Add a `"translated"` field to each entry.
+Read `texts.json` and add a `"translated"` field to each entry in the `groups` array.
 
 **Translation guidelines:**
-- Preserve the meaning, tone, and register of the original
-- Keep proper nouns, brand names, and technical terms unchanged unless a standard localized form exists
-- Maintain placeholders, numbers, URLs, and email addresses as-is
-- Adapt idioms and cultural references naturally rather than translating literally
-- Keep text length comparable — significantly longer translations may overflow text boxes
-- For CJK to Latin translations, expect ~30% length variation; abbreviate if needed to fit
+- Preserve meaning, tone, and register
+- Keep proper nouns, brand names, technical terms, numbers, URLs, and email addresses as-is
+- Keep text length comparable to the original — longer translations may overflow
+- For CJK ↔ Latin translations, expect ~30% length variation; abbreviate if needed
 
-**Handling grouped text spans:**
+**Handling multi-line blocks:**
 
-Text in PDFs is often split across multiple spans per line. When translating:
+When consecutive groups share the same `page` and `block_idx` and form a single sentence or paragraph:
+1. Translate the full sentence/paragraph as a unit
+2. Put the complete translation in the **first** group's `"translated"` field
+3. Set remaining groups' `"translated"` to empty string `""`
 
-1. Group consecutive spans within each page that form a logical phrase or sentence (same block, same line)
-2. Translate the FULL phrase/sentence as a unit
-3. Put the complete translated text in the **first** span of the group
-4. Set remaining spans in the group to **empty string `""`** — the `apply_translations.py` script will remove them
+For standalone groups (headings, labels), translate directly.
 
-For standalone spans (single words that are independent labels), translate directly.
+**Large documents (>50 groups):**
+1. Split into batches by page ranges
+2. Use subagents for parallel translation (~5-6 pages per batch)
+3. Merge results back into `texts.json`
 
-**Process for large documents (>50 spans):**
-1. Read `texts.json`
-2. Split into batches by page groups
-3. Use subagents for parallel translation — each batch handles ~5-6 pages
-4. Merge results back into `texts.json`
-
-**Process for small documents (≤50 spans):**
-1. Read `texts.json`
-2. Translate all spans at once
-3. Write the completed file
+**Small documents (<=50 groups):**
+Translate all groups at once.
 
 ### 6. Apply translations
 
@@ -94,13 +86,11 @@ For standalone spans (single words that are independent labels), translate direc
 python scripts/apply_translations.py input.pdf $tmpdir/texts.json output.pdf --lang <target>
 ```
 
-The `--lang` flag helps select the appropriate font for the target language (e.g., CJK font for Japanese/Chinese/Korean). Use short codes: `en`, `ja`, `zh`, `ko`, `fr`, `de`, `es`, `pt`, `it`, `ru`, `ar`, `hi`, `th`, `vi`.
+The `--lang` flag selects the appropriate font: `ja` → CJK Japanese, `zh` → CJK Simplified Chinese, `zh-tw` → CJK Traditional Chinese, `ko` → CJK Korean, others → Helvetica.
 
-The output file should be placed in the same directory as the input file, with a language suffix appended (e.g., `input_JA.pdf`).
+Place the output file in the same directory as the input, with a language suffix (e.g., `input_JA.pdf`).
 
 ### 7. Cleanup
-
-Remove the temporary directory:
 
 ```python
 import shutil
@@ -115,14 +105,13 @@ python -m markitdown translated.pdf
 
 Verify:
 - All text segments are translated (no source language remnants)
-- No placeholder or template text remains
 - Proper nouns and brand names are preserved
 - Numbers and formatting are intact
 
 ## Limitations
 
-PDF is a display format, not an editing format. Translation quality depends on:
-- **Text-based PDFs** work well; scanned/image PDFs require OCR first
+- **Text-based PDFs only** — scanned/image PDFs require OCR first
 - **Complex layouts** (multi-column, overlapping text boxes) may need manual adjustment
-- **Fonts**: translated text uses PyMuPDF built-in fonts (Helvetica for Latin, CJK font for East Asian). Original decorative fonts will not be preserved
-- **Text overflow**: if translated text is significantly longer than the original, automatic font-size reduction is applied but may not always fit perfectly
+- **Fonts** — translated text uses PyMuPDF built-in fonts (Helvetica for Latin, CJK fonts for East Asian). Original decorative fonts are not preserved
+- **Arabic/Thai/Hindi** — PyMuPDF built-in fonts have limited support for these scripts
+- **Text overflow** — automatic font-size reduction is applied but may not always fit perfectly
