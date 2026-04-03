@@ -1,6 +1,6 @@
 {
   "name": "translate-pptx",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Translate PowerPoint (.pptx) presentations between any language pair while preserving all formatting, layouts, images, and design.",
   "author": {
     "name": "Masahiro Yamaguchi"

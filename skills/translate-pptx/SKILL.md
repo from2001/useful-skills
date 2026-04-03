@@ -1,16 +1,6 @@
 ---
 name: translate-pptx
 description: "Translate PowerPoint (.pptx) presentations between any language pair while preserving all formatting, layouts, images, and design. Use this skill when the user asks to translate a .pptx file, convert a presentation to another language, localize slides, or mentions translating a deck or slide content. Triggers on requests like 'translate this pptx to English', 'localize this presentation into Japanese', or 'convert these slides to French'."
-allowed-tools:
-  - Bash(python *)
-  - Bash(python3 *)
-  - Bash(pip *)
-  - Bash(pip3 *)
-  - Read
-  - Write
-  - Edit
-  - Grep
-  - Glob
 ---
 
 # Translate PPTX
