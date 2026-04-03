@@ -1,0 +1,11 @@
+{
+  "name": "translate-pptx",
+  "version": "1.0.0",
+  "description": "Translate PowerPoint (.pptx) presentations between any language pair while preserving all formatting, layouts, images, and design.",
+  "author": {
+    "name": "Masahiro Yamaguchi"
+  },
+  "repository": "https://github.com/from2001/agent-skills",
+  "license": "MIT",
+  "keywords": ["pptx", "translate", "powerpoint", "localization", "i18n"]
+}
