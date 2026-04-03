@@ -1,6 +1,6 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
-  "name": "useful-skills",
+  "name": "from2001-useful-skills",
   "version": "1.0.0",
   "description": "Agent skills for Claude Code including PowerPoint translation with full formatting preservation",
   "owner": {
