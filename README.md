@@ -1,6 +1,6 @@
 # useful-skills
 
-Claude Code plugin marketplace for useful skills.
+Claude Code plugin marketplace for useful skills which I made.
 
 ## Installation
 
