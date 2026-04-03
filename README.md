@@ -6,8 +6,10 @@ Claude Code plugin marketplace for useful skills.
 
 ### 1. Add the marketplace
 
-```bash
-claude plugin add github.com/from2001/useful-skills
+In the Claude Code CLI, run:
+
+```
+/plugin marketplace add from2001/useful-skills
 ```
 
 ### 2. Install a skill
@@ -18,8 +20,8 @@ claude plugin add github.com/from2001/useful-skills
 
 Translate PowerPoint (.pptx) presentations between any language pair while preserving all formatting and design.
 
-```bash
-claude skill install translate-pptx
+```
+/plugin install translate-pptx@from2001-useful-skills
 ```
 
 ## License
