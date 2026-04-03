@@ -40,6 +40,14 @@ Multi-LLM code review and auto-fix. Runs multiple review skills (Codex, Gemini, 
 /plugin install review-and-fix-with-multiple-llm@from2001-useful-skills
 ```
 
+### nano-banana-infographic
+
+Generate NotebookLM-style infographic images from any topic or data using Gemini API. Produces both English and Japanese versions at 1920x1080 with identical layout.
+
+```
+/plugin install nano-banana-infographic@from2001-useful-skills
+```
+
 ## License
 
 MIT

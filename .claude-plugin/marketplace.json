@@ -1,7 +1,7 @@
 {
   "name": "from2001-useful-skills",
-  "version": "1.4.0",
-  "description": "Agent skills for Claude Code including document translation and multi-LLM code review",
+  "version": "1.5.0",
+  "description": "A collection of useful agent skills for Claude Code",
   "owner": {
     "name": "Masahiro Yamaguchi"
   },
@@ -26,6 +26,13 @@
       "version": "1.2.0",
       "source": "./plugins/review-and-fix-with-multiple-llm",
       "category": "developer-tools"
+    },
+    {
+      "name": "nano-banana-infographic",
+      "description": "Generate NotebookLM-style infographic images from any topic or data using Gemini API. Produces both English and Japanese versions at 1920x1080 with identical layout.",
+      "version": "1.0.0",
+      "source": "./plugins/nano-banana-infographic",
+      "category": "productivity"
     }
   ]
 }
