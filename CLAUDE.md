@@ -9,9 +9,9 @@ A Claude Code plugin marketplace (`from2001-useful-skills`) that provides docume
 ## Repository Structure
 
 - `.claude-plugin/marketplace.json` — Plugin registry; defines available skills, versions, and metadata
-- `skills/<skill-name>/SKILL.md` — Skill definition (YAML frontmatter + workflow instructions)
-- `skills/<skill-name>/scripts/` — Python helper scripts used during skill execution
-- `skills/<skill-name>/README.md` — User-facing documentation
+- `plugins/<plugin-name>/skills/<skill-name>/SKILL.md` — Skill definition (YAML frontmatter + workflow instructions)
+- `plugins/<plugin-name>/skills/<skill-name>/scripts/` — Python helper scripts used during skill execution
+- `plugins/<plugin-name>/skills/<skill-name>/README.md` — User-facing documentation
 
 ## Skills
 
@@ -27,7 +27,7 @@ Translates PDF files using PyMuPDF (fitz) to extract text spans with bounding bo
 
 ## Adding a New Skill
 
-1. Each skill lives in `skills/<skill-name>/` with a required `SKILL.md`
+1. Each plugin lives in `plugins/<plugin-name>/skills/<skill-name>/` with a required `SKILL.md`
 2. Register the skill in `.claude-plugin/marketplace.json` under the `plugins` array
 3. Update `README.md` to include the new skill
 4. Python scripts go in `scripts/`

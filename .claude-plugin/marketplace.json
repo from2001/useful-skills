@@ -11,21 +11,21 @@
       "name": "translate-pptx",
       "description": "Translate PowerPoint (.pptx) presentations between any language pair while preserving all formatting, layouts, images, and design.",
       "version": "1.1.0",
-      "source": "./skills/translate-pptx",
+      "source": "./plugins/translate-pptx",
       "category": "productivity"
     },
     {
       "name": "translate-pdf",
       "description": "Translate PDF documents between any language pair while preserving layout, images, and formatting.",
       "version": "1.1.0",
-      "source": "./skills/translate-pdf",
+      "source": "./plugins/translate-pdf",
       "category": "productivity"
     },
     {
       "name": "review-and-fix-with-multiple-llm",
       "description": "Multi-LLM code review and auto-fix. Runs multiple review skills in parallel, normalizes outputs, aggregates findings by consensus with priority levels and confidence scoring, then fixes validated issues.",
       "version": "1.1.0",
-      "source": "./skills/review-and-fix-with-multiple-llm",
+      "source": "./plugins/review-and-fix-with-multiple-llm",
       "category": "developer-tools"
     }
   ]
