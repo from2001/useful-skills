@@ -32,6 +32,14 @@ Translate PDF documents between any language pair while preserving layout, image
 /plugin install translate-pdf@from2001-useful-skills
 ```
 
+### review-and-fix-with-multiple-llm
+
+Multi-LLM code review and auto-fix. Runs multiple review skills (Codex, Gemini, GitHub Copilot, etc.) in parallel, normalizes outputs, aggregates findings by consensus with P0-P3 priority levels and confidence scoring, then fixes validated issues in priority order.
+
+```
+/plugin install review-and-fix-with-multiple-llm@from2001-useful-skills
+```
+
 ## License
 
 MIT

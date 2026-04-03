@@ -1,8 +1,8 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "from2001-useful-skills",
-  "version": "1.1.0",
-  "description": "Agent skills for Claude Code including PowerPoint and PDF translation with full formatting preservation",
+  "version": "1.2.0",
+  "description": "Agent skills for Claude Code including document translation and multi-LLM code review",
   "owner": {
     "name": "Masahiro Yamaguchi"
   },
@@ -24,6 +24,15 @@
       "category": "productivity",
       "keywords": ["pdf", "translate", "localization", "i18n"],
       "skills": ["./skills/translate-pdf"]
+    },
+    {
+      "name": "review-and-fix-with-multiple-llm",
+      "description": "Multi-LLM code review and auto-fix. Runs multiple review skills in parallel, normalizes outputs, aggregates findings by consensus with priority levels and confidence scoring, then fixes validated issues.",
+      "source": "./",
+      "version": "1.0.0",
+      "category": "developer-tools",
+      "keywords": ["code-review", "multi-llm", "auto-fix", "consensus", "security"],
+      "skills": ["./skills/review-and-fix-with-multiple-llm"]
     }
   ]
 }
