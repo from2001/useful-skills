@@ -11,7 +11,7 @@
       "name": "translate-pptx",
       "description": "Translate PowerPoint (.pptx) presentations between any language pair while preserving all formatting, layouts, images, and design.",
       "source": "./",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "category": "productivity",
       "keywords": ["pptx", "translate", "powerpoint", "localization", "i18n"],
       "skills": ["./skills/translate-pptx"]
