@@ -1,5 +1,4 @@
 {
-  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "from2001-useful-skills",
   "version": "1.4.0",
   "description": "Agent skills for Claude Code including document translation and multi-LLM code review",
