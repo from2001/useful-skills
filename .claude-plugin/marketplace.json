@@ -1,0 +1,20 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "agent-skills",
+  "version": "1.0.0",
+  "description": "Agent skills for Claude Code including PowerPoint translation with full formatting preservation",
+  "owner": {
+    "name": "Masahiro Yamaguchi"
+  },
+  "plugins": [
+    {
+      "name": "translate-pptx",
+      "description": "Translate PowerPoint (.pptx) presentations between any language pair while preserving all formatting, layouts, images, and design.",
+      "source": "./",
+      "version": "1.0.0",
+      "category": "productivity",
+      "keywords": ["pptx", "translate", "powerpoint", "localization", "i18n"],
+      "skills": ["./skills/translate-pptx"]
+    }
+  ]
+}
