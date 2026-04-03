@@ -1,13 +1,13 @@
-# agent-skills
+# useful-skills
 
-Claude Code plugin marketplace for agent skills.
+Claude Code plugin marketplace for useful skills.
 
 ## Installation
 
 ### 1. Add the marketplace
 
 ```bash
-claude plugin add github.com/from2001/agent-skills
+claude plugin add github.com/from2001/useful-skills
 ```
 
 ### 2. Install a skill
