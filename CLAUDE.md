@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A Claude Code plugin marketplace (`from2001-useful-skills`) that provides document translation skills. Each skill is a self-contained package with a `SKILL.md` workflow definition and Python helper scripts.
+A Claude Code plugin marketplace (`from2001-useful-skills`) that provides various utility skills including document translation and image generation. Each skill is a self-contained package with a `SKILL.md` workflow definition and Python helper scripts.
 
 ## Repository Structure
 
@@ -28,10 +28,11 @@ Translates PDF files using PyMuPDF (fitz) to extract text spans with bounding bo
 ## Adding a New Skill
 
 1. Each plugin lives in `plugins/<plugin-name>/skills/<skill-name>/` with a required `SKILL.md`
-2. Register the skill in `.claude-plugin/marketplace.json` under the `plugins` array
-3. Update `README.md` to include the new skill
-4. Python scripts go in `scripts/`
-5. `.skill` files (ZIP archives) are **not** needed — marketplace installs directly from the repository
+2. Python scripts go in `scripts/`
+3. `.skill` files (ZIP archives) are **not** needed — marketplace installs directly from the repository
+4. **Always update both of these when adding a new skill:**
+   - `.claude-plugin/marketplace.json` — add an entry to the `plugins` array and increment the top-level `version`
+   - `README.md` — add the new skill to the skills list
 
 ## Versioning
 
