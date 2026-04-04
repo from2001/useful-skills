@@ -1,6 +1,6 @@
 {
   "name": "from2001-useful-skills",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "A collection of useful agent skills for Claude Code",
   "owner": {
     "name": "Masahiro Yamaguchi"
@@ -32,6 +32,13 @@
       "description": "Generate NotebookLM-style infographic images from any topic or data using Gemini API. Produces both English and Japanese versions at 1920x1080 with identical layout.",
       "version": "1.0.0",
       "source": "./plugins/nano-banana-infographic",
+      "category": "productivity"
+    },
+    {
+      "name": "nano-banana",
+      "description": "Generate a graphic image from any text or topic using Gemini API. A simple, single-image generator for visual summaries and illustrations.",
+      "version": "1.0.0",
+      "source": "./plugins/nano-banana",
       "category": "productivity"
     }
   ]
