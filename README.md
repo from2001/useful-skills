@@ -48,6 +48,14 @@ Generate NotebookLM-style infographic images from any topic or data using Gemini
 /plugin install nano-banana-infographic@from2001-useful-skills
 ```
 
+### nano-banana
+
+Generate a graphic image from any text or topic using Gemini API. A simple, single-image generator for visual summaries, concept illustrations, and simple graphics.
+
+```
+/plugin install nano-banana@from2001-useful-skills
+```
+
 ## License
 
 MIT
