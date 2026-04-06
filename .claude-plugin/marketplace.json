@@ -1,6 +1,6 @@
 {
   "name": "from2001-useful-skills",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "A collection of useful agent skills for Claude Code",
   "owner": {
     "name": "Masahiro Yamaguchi"
@@ -10,35 +10,40 @@
       "name": "translate-pptx",
       "description": "Translate PowerPoint (.pptx) presentations between any language pair while preserving all formatting, layouts, images, and design.",
       "version": "1.2.0",
-      "source": "./plugins/translate-pptx",
+      "source": "./",
+      "skills": ["./.claude/skills/translate-pptx"],
       "category": "productivity"
     },
     {
       "name": "translate-pdf",
       "description": "Translate PDF documents between any language pair while preserving layout, images, and formatting.",
       "version": "1.2.0",
-      "source": "./plugins/translate-pdf",
+      "source": "./",
+      "skills": ["./.claude/skills/translate-pdf"],
       "category": "productivity"
     },
     {
       "name": "review-and-fix-with-multiple-llm",
       "description": "Multi-LLM code review and auto-fix. Runs multiple review skills in parallel, normalizes outputs, aggregates findings by consensus with priority levels and confidence scoring, then fixes validated issues.",
       "version": "1.2.0",
-      "source": "./plugins/review-and-fix-with-multiple-llm",
+      "source": "./",
+      "skills": ["./.claude/skills/review-and-fix-with-multiple-llm"],
       "category": "developer-tools"
     },
     {
       "name": "nano-banana-infographic",
       "description": "Generate NotebookLM-style infographic images from any topic or data using Gemini API. Produces both English and Japanese versions at 1920x1080 with identical layout.",
       "version": "1.0.0",
-      "source": "./plugins/nano-banana-infographic",
+      "source": "./",
+      "skills": ["./.claude/skills/nano-banana-infographic"],
       "category": "productivity"
     },
     {
       "name": "nano-banana",
       "description": "Generate a graphic image from any text or topic using Gemini API. A simple, single-image generator for visual summaries and illustrations.",
       "version": "1.0.0",
-      "source": "./plugins/nano-banana",
+      "source": "./",
+      "skills": ["./.claude/skills/nano-banana"],
       "category": "productivity"
     }
   ]
