@@ -6,8 +6,9 @@ description: >-
   heterogeneous outputs, aggregates findings by consensus with P0-P3 priority
   levels and confidence scoring, then fixes validated issues in priority order.
   Each model uses prompts tailored to its strengths (Codex: native /codex:review
-  plugin with structured output, Gemini: Principal Engineer persona + broad
-  criteria, Claude/Copilot: security-focused + false-positive filtering).
+  plugin with structured output, Claude: built-in /review command, Gemini:
+  Principal Engineer persona + broad criteria, Copilot: security-focused +
+  false-positive filtering).
   Use when the user asks to review code with multiple LLMs/skills, requests
   multi-model code review, says "review with multiple LLMs", or lists several
   review skills to run together.
@@ -35,9 +36,18 @@ review-capable skills from the current session's skill list. Include any skill
 whose name or description suggests code review capability. Common candidates:
 
 - Project-specific review skills (e.g., `review-netsync`, `review-*`)
+- `review` (Claude Code built-in review)
 - `github-copilot` (GPT-based review)
 - `codex:review` (OpenAI Codex native review plugin)
 - `gemini-cli` (Google Gemini-based review)
+
+**Always-include skills**: The following skills are known to be installed via
+external plugins and may NOT appear in the system-reminder skill list. Always
+include them in the candidate list regardless of whether they are visible in
+the current session's skill list:
+
+- `review` (Claude Code built-in review)
+- `codex:review` (OpenAI Codex native review plugin, installed via codex plugin)
 
 Present the detected list to the user and proceed. If no review-capable skills
 are found, inform the user and stop.
@@ -45,8 +55,9 @@ are found, inform the user and stop.
 **If skill names are provided**, use those directly.
 
 Verify each skill exists in the current session's available skills list.
-For any skill that does not exist, report it to the user immediately and
-continue with the remaining skills.
+For skills in the always-include list above, skip this verification and
+assume they are available. For any other skill that does not exist, report
+it to the user immediately and continue with the remaining skills.
 
 ### 2. Launch parallel review agents
 
@@ -238,7 +249,29 @@ For each: File, Line, Description, Confidence (0.0-1.0)
 - Total findings with confidence breakdown
 ````
 
-#### 2e. Fallback prompt for other/unknown LLM skills
+#### 2e. Prompt for `review` (Claude Code built-in review)
+
+Use the `/review` skill directly — it is Claude Code's built-in pull request
+review command. It analyzes the current branch diff and returns structured
+review findings. Do NOT pass custom review instructions; invoke it as-is.
+
+```
+Run the review skill to perform a code review on the current branch.
+Use the Skill tool with skill: "review".
+Return the full review results exactly as output by the skill.
+```
+
+The `/review` built-in returns review findings with severity levels and
+file/line references. Normalize its output using the same rules as the
+fallback/free-text parser (section 3a, "Free-text" column):
+- Priority: keyword match (CRITICAL→0, HIGH→1, MEDIUM→2, LOW→3)
+- Confidence: default 0.85 (Claude's own review tends to be high quality)
+- File/line: regex for file paths and `:NN` patterns
+- Overall: heuristic from summary section
+- Suggestion: regex for code blocks
+- Category: keyword match
+
+#### 2f. Fallback prompt for other/unknown LLM skills
 
 For any LLM skill not matching the above (unknown model), use a general-purpose
 structured prompt:
@@ -291,15 +324,15 @@ structure before aggregation:
 
 **Normalization rules per model:**
 
-| Source field | Codex (codex:review) | Gemini | Copilot/GPT | Free-text |
-|---|---|---|---|---|
-| priority | `severity`: critical→0, high→1, medium→2, low→3 | 🔴→0, 🟠→1, 🟡→2, 🟢→3 | CRITICAL→0, HIGH→1, MEDIUM→2, LOW→3 | keyword match |
-| confidence | `confidence` directly | default 0.8 (Gemini does not provide) | `Confidence` field directly | `consensus_count / total` |
-| file | `file` directly | `File:` field | `File` field | regex for file paths |
-| line_start/end | `line_start`/`line_end` directly | `Line:` field (parse range) | `Line` field | regex for `:NN` patterns |
-| overall | `verdict`: approve→PASS, needs-attention→NEEDS_FIXES | `Summary` section → map | `SUMMARY` section → map | heuristic |
-| suggestion | `recommendation` field | `suggestion` code block | `Suggested fix` field | regex for code blocks |
-| category | infer from title/body keywords | `Category:` field directly | section header → map | keyword match |
+| Source field | Codex (codex:review) | Gemini | Copilot/GPT | Claude (/review) | Free-text |
+|---|---|---|---|---|---|
+| priority | `severity`: critical→0, high→1, medium→2, low→3 | 🔴→0, 🟠→1, 🟡→2, 🟢→3 | CRITICAL→0, HIGH→1, MEDIUM→2, LOW→3 | keyword match (same as free-text) | keyword match |
+| confidence | `confidence` directly | default 0.8 (Gemini does not provide) | `Confidence` field directly | default 0.85 | `consensus_count / total` |
+| file | `file` directly | `File:` field | `File` field | regex for file paths | regex for file paths |
+| line_start/end | `line_start`/`line_end` directly | `Line:` field (parse range) | `Line` field | regex for `:NN` patterns | regex for `:NN` patterns |
+| overall | `verdict`: approve→PASS, needs-attention→NEEDS_FIXES | `Summary` section → map | `SUMMARY` section → map | heuristic | heuristic |
+| suggestion | `recommendation` field | `suggestion` code block | `Suggested fix` field | regex for code blocks | regex for code blocks |
+| category | infer from title/body keywords | `Category:` field directly | section header → map | keyword match | keyword match |
 
 **Category mapping:**
 - Gemini's `efficiency` → `performance`

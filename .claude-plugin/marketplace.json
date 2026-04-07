@@ -1,6 +1,6 @@
 {
   "name": "from2001-useful-skills",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "description": "A collection of useful agent skills for Claude Code",
   "owner": {
     "name": "Masahiro Yamaguchi"
@@ -45,6 +45,14 @@
       "source": "./",
       "skills": ["./.claude/skills/nano-banana"],
       "category": "productivity"
+    },
+    {
+      "name": "gemini",
+      "description": "Delegate tasks to Google's Gemini CLI in non-interactive sandboxed mode. Use when the user explicitly asks to use Gemini.",
+      "version": "1.0.0",
+      "source": "./",
+      "skills": ["./.claude/skills/gemini"],
+      "category": "developer-tools"
     }
   ]
 }
