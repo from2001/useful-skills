@@ -56,6 +56,14 @@ Generate a graphic image from any text or topic using Gemini API. A simple, sing
 /plugin install nano-banana@from2001-useful-skills
 ```
 
+### gemini
+
+Delegate tasks to Google's Gemini CLI in non-interactive sandboxed mode. Triggers when the user explicitly asks to use Gemini.
+
+```
+/plugin install gemini@from2001-useful-skills
+```
+
 ## License
 
 MIT
