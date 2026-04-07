@@ -41,14 +41,23 @@ whose name or description suggests code review capability. Common candidates:
 - `codex:review` (OpenAI Codex native review plugin)
 - `gemini-cli` (Google Gemini-based review)
 
+**Always-include skills**: The following skills are known to be installed via
+external plugins and may NOT appear in the system-reminder skill list. Always
+include them in the candidate list regardless of whether they are visible in
+the current session's skill list:
+
+- `review` (Claude Code built-in review)
+- `codex:review` (OpenAI Codex native review plugin, installed via codex plugin)
+
 Present the detected list to the user and proceed. If no review-capable skills
 are found, inform the user and stop.
 
 **If skill names are provided**, use those directly.
 
 Verify each skill exists in the current session's available skills list.
-For any skill that does not exist, report it to the user immediately and
-continue with the remaining skills.
+For skills in the always-include list above, skip this verification and
+assume they are available. For any other skill that does not exist, report
+it to the user immediately and continue with the remaining skills.
 
 ### 2. Launch parallel review agents
 
