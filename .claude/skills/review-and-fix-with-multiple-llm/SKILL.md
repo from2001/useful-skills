@@ -6,14 +6,13 @@ description: >-
   heterogeneous outputs, aggregates findings by consensus with P0-P3 priority
   levels and confidence scoring, then fixes validated issues in priority order.
   Each model uses prompts tailored to its strengths (Codex: native /codex:review
-  plugin with structured output, Claude: built-in /review command, Gemini:
-  Principal Engineer persona + broad criteria, Copilot: security-focused +
-  false-positive filtering).
+  plugin with structured output, Claude: built-in /review command, Copilot:
+  security-focused + false-positive filtering).
   Use when the user asks to review code with multiple LLMs/skills, requests
   multi-model code review, says "review with multiple LLMs", or lists several
   review skills to run together.
   Example invocations:
-  - "Review this branch with review-netsync, github-copilot, codex:review, gemini-cli"
+  - "Review this branch with review-netsync, github-copilot, codex:review"
   - "Run code review using all available LLM skills"
   - "Use multiple models to review and fix the current diff"
 ---
@@ -39,7 +38,6 @@ whose name or description suggests code review capability. Common candidates:
 - `review` (Claude Code built-in review)
 - `github-copilot` (GPT-based review)
 - `codex:review` (OpenAI Codex native review plugin)
-- `gemini-cli` (Google Gemini-based review)
 
 **Always-include skills**: The following skills are known to be installed via
 external plugins and may NOT appear in the system-reminder skill list. Always
@@ -102,81 +100,7 @@ The `/codex:review` plugin returns structured output with:
   `recommendation`
 - `next_steps[]`: suggested actions
 
-#### 2c. Prompt for `gemini-cli` (Google Gemini)
-
-Optimized for Gemini's strengths: Principal Engineer persona with first-principles
-thinking, broad review criteria covering 9 dimensions, and emphasis on contextual
-understanding. Based on gemini-cli-extensions/code-review `SKILL.md` and
-google-github-actions/run-gemini-cli review workflow.
-
-````
-## PERSONA
-You are a very experienced Principal Software Engineer and a meticulous
-Code Review Architect. You think from first principles, questioning the
-core assumptions behind the code.
-
-## OBJECTIVE
-Deeply understand the intent and context of the code changes on the
-{branch_name} branch compared to {base_branch}, then perform a thorough,
-actionable, and objective review.
-Primary goal: identify potential bugs, security vulnerabilities, performance
-bottlenecks, and clarity issues.
-Provide insightful feedback and concrete, ready-to-use code suggestions.
-Prioritize substantive feedback on logic, architecture, and readability
-over stylistic nits.
-
-## Context Gathering
-Before reviewing:
-1. Read all files included in the diff (full file content, not just changed lines).
-2. Read files imported/used by or neighboring the changed files.
-
-## Review Criteria (in priority order)
-1. Correctness: Logic errors, off-by-one, race conditions, null handling
-2. Security: Injection, hardcoded secrets, auth gaps, insecure defaults
-3. Efficiency: N+1 queries, resource leaks, unnecessary allocations
-4. Maintainability: Complex logic, poor naming, tight coupling
-5. Testing: Missing tests, uncovered edge cases, broken assertions
-6. Performance: Algorithmic inefficiency, missing caching, hot path issues
-7. Scalability: Bottlenecks under load, missing pagination
-8. Modularity and Reusability: God classes, duplicated logic
-9. Error Logging and Monitoring: Silent failures, missing observability
-
-## Critical Constraints
-- ONLY comment on lines with + or - (actual changes in the diff).
-- Only comment if there is a demonstrable BUG, ISSUE, or significant IMPROVEMENT.
-- DO NOT tell the user to "check," "confirm," "verify," or "ensure."
-- DO NOT explain what code does or validate its purpose.
-- State repeated issues once and indicate other locations.
-- Meticulous attention to line numbers.
-
-## Severity Levels
-- 🔴 CRITICAL: Security vulnerability, system-breaking bug, data corruption
-- 🟠 HIGH: Performance bottleneck, resource leak, major architectural violation
-- 🟡 MEDIUM: Missing input validation, complex logic, deviation from best practices
-- 🟢 LOW: Refactoring opportunity, doc typo, minor enhancement
-
-## Output Format
-For each finding, output in this format:
-
-### [🔴|🟠|🟡|🟢] Title of the issue
-
-**File:** `path/to/file.ext` **Line:** 42-45
-**Category:** correctness|security|efficiency|maintainability|testing|performance|scalability|modularity|error_logging
-
-Description of the problem (1 paragraph max).
-
-```suggestion
-replacement code here
-```
-
-End with a summary section:
-
-## Summary
-- Overall assessment: PASS | NEEDS_FIXES | CRITICAL
-- Total findings: N (🔴 X, 🟠 Y, 🟡 Z, 🟢 W)
-````
-
-#### 2d. Prompt for `github-copilot` (GPT via Copilot CLI)
+#### 2c. Prompt for `github-copilot` (GPT via Copilot CLI)
 
 Optimized for GPT's strengths: thorough security analysis with confidence
 thresholds, false-positive filtering, and categorized risk assessment.
@@ -249,7 +173,7 @@ For each: File, Line, Description, Confidence (0.0-1.0)
 - Total findings with confidence breakdown
 ````
 
-#### 2e. Prompt for `review` (Claude Code built-in review)
+#### 2d. Prompt for `review` (Claude Code built-in review)
 
 Use the `/review` skill directly — it is Claude Code's built-in pull request
 review command. It analyzes the current branch diff and returns structured
@@ -271,7 +195,7 @@ fallback/free-text parser (section 3a, "Free-text" column):
 - Suggestion: regex for code blocks
 - Category: keyword match
 
-#### 2f. Fallback prompt for other/unknown LLM skills
+#### 2e. Fallback prompt for other/unknown LLM skills
 
 For any LLM skill not matching the above (unknown model), use a general-purpose
 structured prompt:
@@ -324,25 +248,22 @@ structure before aggregation:
 
 **Normalization rules per model:**
 
-| Source field | Codex (codex:review) | Gemini | Copilot/GPT | Claude (/review) | Free-text |
-|---|---|---|---|---|---|
-| priority | `severity`: critical→0, high→1, medium→2, low→3 | 🔴→0, 🟠→1, 🟡→2, 🟢→3 | CRITICAL→0, HIGH→1, MEDIUM→2, LOW→3 | keyword match (same as free-text) | keyword match |
-| confidence | `confidence` directly | default 0.8 (Gemini does not provide) | `Confidence` field directly | default 0.85 | `consensus_count / total` |
-| file | `file` directly | `File:` field | `File` field | regex for file paths | regex for file paths |
-| line_start/end | `line_start`/`line_end` directly | `Line:` field (parse range) | `Line` field | regex for `:NN` patterns | regex for `:NN` patterns |
-| overall | `verdict`: approve→PASS, needs-attention→NEEDS_FIXES | `Summary` section → map | `SUMMARY` section → map | heuristic | heuristic |
-| suggestion | `recommendation` field | `suggestion` code block | `Suggested fix` field | regex for code blocks | regex for code blocks |
-| category | infer from title/body keywords | `Category:` field directly | section header → map | keyword match | keyword match |
+| Source field | Codex (codex:review) | Copilot/GPT | Claude (/review) | Free-text |
+|---|---|---|---|---|
+| priority | `severity`: critical→0, high→1, medium→2, low→3 | CRITICAL→0, HIGH→1, MEDIUM→2, LOW→3 | keyword match (same as free-text) | keyword match |
+| confidence | `confidence` directly | `Confidence` field directly | default 0.85 | `consensus_count / total` |
+| file | `file` directly | `File` field | regex for file paths | regex for file paths |
+| line_start/end | `line_start`/`line_end` directly | `Line` field | regex for `:NN` patterns | regex for `:NN` patterns |
+| overall | `verdict`: approve→PASS, needs-attention→NEEDS_FIXES | `SUMMARY` section → map | heuristic | heuristic |
+| suggestion | `recommendation` field | `Suggested fix` field | regex for code blocks | regex for code blocks |
+| category | infer from title/body keywords | section header → map | keyword match | keyword match |
 
 **Category mapping:**
-- Gemini's `efficiency` → `performance`
-- Gemini's `error_logging` → `observability`
 - Copilot's "Security" section → `security`
 - Copilot's "Code Quality" section → `correctness` or `maintainability`
 
 **Suggestion mapping:**
 - Codex (`codex:review`): use `recommendation` field as the suggestion
-- Gemini: extract from `suggestion` code block
 - Copilot/GPT: extract from `Suggested fix` field
 
 #### 3b. Deduplicate by root cause
@@ -360,7 +281,7 @@ structure before aggregation:
 - **confidence**: Use the highest confidence score from any reviewer.
   If no reviewer provided a confidence score, default to
   `consensus_count / total_reviewers`.
-- **sources**: List which models flagged this issue (e.g., "codex, gemini-cli").
+- **sources**: List which models flagged this issue (e.g., "codex, claude").
 - **Sort** all findings by: priority ascending (P0 first), then confidence
   descending within the same priority.
 
@@ -383,10 +304,10 @@ Present the aggregated results with the overall assessment:
 ```
 | # | Priority | Category | Issue | File:Line | Consensus | Confidence | Sources |
 |---|----------|----------|-------|-----------|-----------|------------|---------|
-| 1 | P0 | security | Hardcoded API key | config.py:23 | 3/3 | 0.95 | codex, gemini, copilot |
-| 2 | P1 | correctness | Off-by-one in loop | parser.rs:142-145 | 2/3 | 0.85 | codex, gemini |
-| 3 | P2 | performance | N+1 query | api/users.py:88 | 2/3 | 0.80 | gemini, copilot |
-| 4 | P3 | maintainability | Complex nested logic | utils.py:55-70 | 1/3 | 0.60 | gemini |
+| 1 | P0 | security | Hardcoded API key | config.py:23 | 3/3 | 0.95 | codex, claude, copilot |
+| 2 | P1 | correctness | Off-by-one in loop | parser.rs:142-145 | 2/3 | 0.85 | codex, claude |
+| 3 | P2 | performance | N+1 query | api/users.py:88 | 2/3 | 0.80 | claude, copilot |
+| 4 | P3 | maintainability | Complex nested logic | utils.py:55-70 | 1/3 | 0.60 | claude |
 ```
 
 After the table, for each finding with a `suggestion` block, display the
@@ -437,7 +358,7 @@ Present what was fixed as a markdown table:
 | # | Priority | Fix description | File(s) | Suggestion by |
 |---|----------|----------------|---------|---------------|
 | 1 | P0 | Removed hardcoded API key | config.py | codex |
-| 2 | P1 | Fixed loop bound off-by-one | parser.rs | gemini-cli |
+| 2 | P1 | Fixed loop bound off-by-one | parser.rs | claude |
 ```
 
 ## Language Handling
@@ -454,15 +375,15 @@ Japanese example:
 
 | # | 優先度 | カテゴリ | 問題 | ファイル:行 | 合意 | 信頼度 | 検出元 |
 |---|--------|----------|------|-------------|------|--------|--------|
-| 1 | P0 | security | ハードコードされたAPIキー | config.py:23 | 3/3 | 0.95 | codex, gemini, copilot |
-| 2 | P1 | correctness | ループ境界のオフバイワン | parser.rs:142-145 | 2/3 | 0.85 | codex, gemini |
+| 1 | P0 | security | ハードコードされたAPIキー | config.py:23 | 3/3 | 0.95 | codex, claude, copilot |
+| 2 | P1 | correctness | ループ境界のオフバイワン | parser.rs:142-145 | 2/3 | 0.85 | codex, claude |
 ```
 
 ```
 | # | 優先度 | 修正内容 | ファイル | 提案元 |
 |---|--------|---------|---------|--------|
 | 1 | P0 | ハードコードされたAPIキーを削除 | config.py | codex |
-| 2 | P1 | ループ境界のオフバイワンを修正 | parser.rs | gemini-cli |
+| 2 | P1 | ループ境界のオフバイワンを修正 | parser.rs | claude |
 ```
 
 ## Error Handling
