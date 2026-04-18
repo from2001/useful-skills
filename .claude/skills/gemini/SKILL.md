@@ -19,12 +19,11 @@ the response back to the user.
 Run the Gemini CLI via Bash with these flags:
 
 ```
-gemini -p "<prompt>" --yolo --sandbox -o text
+gemini -p "<prompt>" --yolo -o text
 ```
 
 - `-p "<prompt>"` — the prompt passed via the `-p` flag
 - `--yolo` — auto-approve all tool actions
-- `--sandbox` — sandboxed execution for safety
 - `-o text` — output plain text
 
 ## Workflow
@@ -37,7 +36,7 @@ gemini -p "<prompt>" --yolo --sandbox -o text
 
 2. **Run the command**:
    ```bash
-   gemini -p "<prompt>" --yolo --sandbox -o text
+   gemini -p "<prompt>" --yolo -o text
    ```
    Use a generous timeout (up to 300000ms) since Gemini may take time for
    complex tasks.
@@ -55,7 +54,6 @@ gemini -p "<prompt>" --yolo --sandbox -o text
 
 ## Important
 
-- Always use `--sandbox` for safety.
 - Always use `--yolo` so the CLI does not hang waiting for approval.
 - Always use `-o text` for plain text output.
 - Do not add `--model` or other flags unless the user explicitly requests them.
