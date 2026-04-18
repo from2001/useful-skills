@@ -49,7 +49,7 @@
     {
       "name": "gemini",
       "description": "Delegate tasks to Google's Gemini CLI in non-interactive mode. Use when the user explicitly asks to use Gemini.",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "source": "./",
       "skills": ["./.claude/skills/gemini"],
       "category": "developer-tools"
