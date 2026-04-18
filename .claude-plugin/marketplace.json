@@ -1,6 +1,6 @@
 {
   "name": "from2001-useful-skills",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "description": "A collection of useful agent skills for Claude Code",
   "owner": {
     "name": "Masahiro Yamaguchi"
@@ -25,7 +25,7 @@
     {
       "name": "review-and-fix-with-multiple-llm",
       "description": "Multi-LLM code review and auto-fix. Runs multiple review skills in parallel, normalizes outputs, aggregates findings by consensus with priority levels and confidence scoring, then fixes validated issues.",
-      "version": "1.2.0",
+      "version": "1.3.0",
       "source": "./",
       "skills": ["./.claude/skills/review-and-fix-with-multiple-llm"],
       "category": "developer-tools"
@@ -45,14 +45,6 @@
       "source": "./",
       "skills": ["./.claude/skills/nano-banana"],
       "category": "productivity"
-    },
-    {
-      "name": "gemini",
-      "description": "Delegate tasks to Google's Gemini CLI in non-interactive mode. Use when the user explicitly asks to use Gemini.",
-      "version": "1.0.2",
-      "source": "./",
-      "skills": ["./.claude/skills/gemini"],
-      "category": "developer-tools"
     }
   ]
 }

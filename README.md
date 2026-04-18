@@ -34,7 +34,7 @@ Translate PDF documents between any language pair while preserving layout, image
 
 ### review-and-fix-with-multiple-llm
 
-Multi-LLM code review and auto-fix. Runs multiple review skills (Codex, Gemini, GitHub Copilot, etc.) in parallel, normalizes outputs, aggregates findings by consensus with P0-P3 priority levels and confidence scoring, then fixes validated issues in priority order.
+Multi-LLM code review and auto-fix. Runs multiple review skills (Codex, GitHub Copilot, etc.) in parallel, normalizes outputs, aggregates findings by consensus with P0-P3 priority levels and confidence scoring, then fixes validated issues in priority order.
 
 ```
 /plugin install review-and-fix-with-multiple-llm@from2001-useful-skills
@@ -54,14 +54,6 @@ Generate a graphic image from any text or topic using Gemini API. A simple, sing
 
 ```
 /plugin install nano-banana@from2001-useful-skills
-```
-
-### gemini
-
-Delegate tasks to Google's Gemini CLI in non-interactive sandboxed mode. Triggers when the user explicitly asks to use Gemini.
-
-```
-/plugin install gemini@from2001-useful-skills
 ```
 
 ## License
