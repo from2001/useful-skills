@@ -16,6 +16,14 @@ In the Claude Code CLI, run:
 
 ## Available Skills
 
+### convert-to-pptx
+
+Convert a slide image or PDF into an editable PowerPoint deck. Decomposes each page into native PowerPoint shapes and text boxes (no SVG, no flattened slide image), crops icons as PNG/JPEG, then renders and visually compares the result against the source — running at least one fix-and-rerender cycle. Image-only PDFs are processed page by page.
+
+```
+/plugin install convert-to-pptx@from2001-useful-skills
+```
+
 ### translate-pptx
 
 Translate PowerPoint (.pptx) presentations between any language pair while preserving all formatting and design.
