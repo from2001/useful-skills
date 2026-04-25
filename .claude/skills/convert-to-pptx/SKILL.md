@@ -24,7 +24,7 @@ Python packages:
 - `pymupdf` — render PDF pages to PNG (only needed when input is a PDF)
 
 System tool for rendering verification:
-- **LibreOffice** (`soffice`) headless — converts the produced .pptx back to images so you can compare against the source. Install with `brew install --cask libreoffice` on macOS, or `apt install libreoffice` on Linux. If LibreOffice is genuinely unavailable, fall back to `unoconv` or PowerPoint's CLI; if neither is present, tell the user — do not skip the verification step.
+- **LibreOffice** (`soffice`) headless — converts the produced .pptx back to images so you can compare against the source. Install with `brew install --cask libreoffice` (macOS), `apt install libreoffice` (Linux), or `winget install TheDocumentFoundation.LibreOffice` / `choco install libreoffice-fresh` (Windows). On Windows the installer typically lands at `C:\Program Files\LibreOffice\program\soffice.exe`; `render_pptx.py` looks there automatically, so adding it to PATH is optional. If LibreOffice is genuinely unavailable, fall back to `unoconv` or PowerPoint's CLI; if neither is present, tell the user — do not skip the verification step.
 
 ## Workflow
 

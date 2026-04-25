@@ -25,15 +25,27 @@ import fitz  # PyMuPDF
 
 
 def find_soffice() -> str | None:
-    candidates = [
-        "soffice",
-        "libreoffice",
-        "/Applications/LibreOffice.app/Contents/MacOS/soffice",
-    ]
-    for c in candidates:
-        path = shutil.which(c) if "/" not in c else (c if Path(c).exists() else None)
+    # Try PATH-resolved names first. shutil.which on Windows respects PATHEXT,
+    # so a single "soffice" lookup also finds soffice.exe.
+    for name in ("soffice", "libreoffice", "soffice.exe"):
+        path = shutil.which(name)
         if path:
             return path
+
+    # Common platform-specific install locations not always on PATH.
+    candidates = [
+        # macOS
+        "/Applications/LibreOffice.app/Contents/MacOS/soffice",
+        # Linux (snap/flatpak occasionally)
+        "/usr/bin/soffice",
+        "/usr/lib/libreoffice/program/soffice",
+        # Windows
+        r"C:\Program Files\LibreOffice\program\soffice.exe",
+        r"C:\Program Files (x86)\LibreOffice\program\soffice.exe",
+    ]
+    for c in candidates:
+        if Path(c).exists():
+            return c
     return None
 
 
@@ -89,8 +101,10 @@ def main() -> int:
     if not soffice:
         print(
             "error: LibreOffice (soffice) not found. Install with "
-            "`brew install --cask libreoffice` (macOS) or "
-            "`apt install libreoffice` (Linux), then retry.",
+            "`brew install --cask libreoffice` (macOS), "
+            "`apt install libreoffice` (Linux), or "
+            "`winget install TheDocumentFoundation.LibreOffice` (Windows), "
+            "then retry.",
             file=sys.stderr,
         )
         return 3
