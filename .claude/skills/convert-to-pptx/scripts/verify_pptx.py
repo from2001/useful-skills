@@ -22,12 +22,12 @@ from pathlib import Path
 from pptx import Presentation
 
 # A picture is considered "full-slide" if it covers >=95% of slide width AND
-# >=95% of slide height. Some legitimate background photos cover the slide,
-# but combined with other content; an offending deck typically has only the
-# picture and maybe one or two captions, so we also flag slides with a
-# full-slide picture and fewer than 3 total shapes.
+# >=95% of slide height. The offending pattern is "pasted screenshot + a
+# couple of overlay captions" — counting *all* shapes lets that pattern slip
+# through (1 picture + 2 text boxes = 3 shapes), so we count non-picture
+# shapes only and require enough of them to rule out the screenshot shortcut.
 FULL_SLIDE_RATIO = 0.95
-MIN_SHAPES_WITH_FULL_PICTURE = 3
+MIN_NON_PICTURE_SHAPES_WITH_FULL_PICTURE = 3
 
 
 def find_svg_parts(pptx_path: Path) -> list[str]:
@@ -55,6 +55,7 @@ def check_slide(slide, slide_w: int, slide_h: int, idx: int) -> list[str]:
             f"not flattened to an image"
         )
 
+    non_picture_shape_count = sum(1 for s in shapes if s.shape_type != 13)
     for s in shapes:
         if s.shape_type == 13:  # MSO_SHAPE_TYPE.PICTURE
             try:
@@ -65,12 +66,13 @@ def check_slide(slide, slide_w: int, slide_h: int, idx: int) -> list[str]:
             if (
                 w_ratio >= FULL_SLIDE_RATIO
                 and h_ratio >= FULL_SLIDE_RATIO
-                and len(shapes) < MIN_SHAPES_WITH_FULL_PICTURE
+                and non_picture_shape_count < MIN_NON_PICTURE_SHAPES_WITH_FULL_PICTURE
             ):
                 problems.append(
                     f"slide {idx}: a single picture covers the whole slide "
                     f"({w_ratio:.0%} x {h_ratio:.0%}) with only "
-                    f"{len(shapes)} shape(s) — looks like a pasted screenshot"
+                    f"{non_picture_shape_count} non-picture shape(s) — "
+                    f"looks like a pasted screenshot with overlay captions"
                 )
 
     return problems
