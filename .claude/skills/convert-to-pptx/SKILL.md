@@ -1,6 +1,6 @@
 ---
 name: convert-to-pptx
-description: "Convert a slide image (PNG/JPEG) or PDF into an editable PowerPoint (.pptx) that visually matches the source. Decomposes each page into native PowerPoint shapes and text boxes (no whole-slide image, no SVG), crops icons/illustrations as PNG/JPEG, then renders the produced .pptx and visually compares it against the source — running at least one fix-and-rerender cycle before delivery. Use this skill whenever the user asks to turn a slide picture, screenshot, presentation image, or PDF into a PowerPoint file, recreate a slide as editable PPTX, or 'rebuild this image as a slide'. Triggers on phrases like 'convert this image to pptx', 'recreate this slide as PowerPoint', 'turn this PDF into editable slides', 'make this picture editable in PowerPoint', or 'rebuild as pptx'. Also handles image-only PDFs by looping the per-slide workflow over each page."
+description: "Convert a slide image (PNG/JPEG) or PDF into an editable PowerPoint (.pptx) that visually matches the source — rebuilt from native shapes and text boxes, then render-compared against the original. Use when the user asks to turn a slide image, screenshot, or PDF into editable PowerPoint, or to 'rebuild this as a slide'."
 ---
 
 # Convert to PPTX
