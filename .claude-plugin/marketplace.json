@@ -9,7 +9,7 @@
     {
       "name": "convert-to-pptx",
       "description": "Convert a slide image (PNG/JPEG) or PDF into an editable PowerPoint deck (no SVG, no flattened slide image), then render-and-compare against the source with at least one fix-and-rerender cycle.",
-      "version": "1.0.0",
+      "version": "1.0.2",
       "source": "./",
       "skills": ["./.claude/skills/convert-to-pptx"],
       "category": "productivity"
