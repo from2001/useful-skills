@@ -1,0 +1,8 @@
+{
+  "csharp-roslyn": {
+    "command": "csharp-roslyn-lsp",
+    "extensionToLanguage": {
+      ".cs": "csharp"
+    }
+  }
+}
