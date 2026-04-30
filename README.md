@@ -64,6 +64,14 @@ Generate a graphic image from any text or topic using Gemini API. A simple, sing
 /plugin install nano-banana@from2001-useful-skills
 ```
 
+### csharp-roslyn-lsp
+
+Microsoft Roslyn-based C# language server for Claude Code. Drop-in replacement for `csharp-lsp@claude-plugins-official` for projects whose `.csproj` files Roslyn handles but csharp-ls rejects (Unity, generated SDK-style csproj with explicit `Sdk.props` imports, etc.). Requires the [VS Code C# extension](https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.csharp). macOS / Linux only.
+
+```
+/plugin install csharp-roslyn-lsp@from2001-useful-skills
+```
+
 ## License
 
 MIT
