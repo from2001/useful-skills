@@ -1,6 +1,21 @@
 import { closeSync, openSync, readFileSync, readSync, statSync } from "fs";
+import { randomBytes } from "crypto";
 import { extname, resolve } from "path";
 import type { Client } from "@xdevplatform/xdk";
+
+type FetchLike = (
+  input: string | URL,
+  init?: {
+    method?: string;
+    headers?: Record<string, string>;
+    body?: Buffer | Uint8Array | string;
+  },
+) => Promise<{
+  ok: boolean;
+  status: number;
+  statusText: string;
+  text(): Promise<string>;
+}>;
 
 const MAX_BYTES = 5 * 1024 * 1024;
 const CHUNK_SIZE = 4 * 1024 * 1024;
@@ -102,6 +117,74 @@ export interface UploadChunkedOptions {
   sleep?: (ms: number) => Promise<void>;
   maxWaitMs?: number;
   chunkSize?: number;
+  fetchImpl?: FetchLike;
+}
+
+// X v2 chunked APPEND endpoint expects multipart/form-data, but
+// @xdevplatform/xdk@0.4.0 sends JSON and then double-reads the error body
+// ("Body is unusable"). We bypass the SDK and POST multipart/form-data
+// directly with an OAuth1-signed Authorization header. Multipart bodies
+// are not part of the OAuth1 signature base string, so the body argument
+// passed to buildRequestHeader is the empty string.
+async function appendChunkMultipart(
+  client: Client,
+  mediaId: string,
+  chunk: Buffer,
+  segmentIndex: number,
+  fetchImpl: FetchLike,
+): Promise<void> {
+  const oauth1 = (client as unknown as { oauth1?: { buildRequestHeader: (m: string, u: string, b: string) => Promise<string> } }).oauth1;
+  if (!oauth1) {
+    throw new Error("OAuth1 credentials are required for chunked media upload");
+  }
+  const baseUrl = (client as unknown as { baseUrl?: string }).baseUrl ?? "https://api.x.com";
+  const url = `${baseUrl}/2/media/upload/${encodeURIComponent(mediaId)}/append`;
+  const authHeader = await oauth1.buildRequestHeader("POST", url, "");
+
+  const boundary = `----xskill${randomBytes(16).toString("hex")}`;
+  const CRLF = "\r\n";
+  const head = Buffer.from(
+    `--${boundary}${CRLF}` +
+      `Content-Disposition: form-data; name="segment_index"${CRLF}${CRLF}` +
+      `${segmentIndex}${CRLF}` +
+      `--${boundary}${CRLF}` +
+      `Content-Disposition: form-data; name="media"; filename="blob"${CRLF}` +
+      `Content-Type: application/octet-stream${CRLF}${CRLF}`,
+    "utf8",
+  );
+  const tail = Buffer.from(`${CRLF}--${boundary}--${CRLF}`, "utf8");
+  const body = Buffer.concat([head, chunk, tail]);
+
+  const response = await fetchImpl(url, {
+    method: "POST",
+    headers: {
+      Authorization: authHeader,
+      "Content-Type": `multipart/form-data; boundary=${boundary}`,
+      "Content-Length": String(body.length),
+    },
+    body,
+  });
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    let detail = text;
+    try {
+      const parsed = JSON.parse(text) as {
+        message?: string;
+        errors?: { message?: string }[];
+      };
+      detail =
+        parsed.message ??
+        parsed.errors?.[0]?.message ??
+        text;
+    } catch {
+      // not JSON; use raw text
+    }
+    const trimmed = detail.length > 300 ? `${detail.slice(0, 300)}…` : detail;
+    throw new Error(
+      `HTTP ${response.status} ${response.statusText}${trimmed ? `: ${trimmed}` : ""}`,
+    );
+  }
 }
 
 interface ProcessingInfo {
@@ -212,6 +295,7 @@ export async function uploadChunked(
   }
 
   const chunkSize = opts.chunkSize ?? CHUNK_SIZE;
+  const fetchImpl = opts.fetchImpl ?? (globalThis.fetch as unknown as FetchLike);
   const buffer = Buffer.alloc(chunkSize);
   const fd = openSync(absolute, "r");
   try {
@@ -220,11 +304,15 @@ export async function uploadChunked(
     while (offset < stats.size) {
       const bytesRead = readSync(fd, buffer, 0, chunkSize, offset);
       if (bytesRead <= 0) break;
-      const base64Chunk = buffer.subarray(0, bytesRead).toString("base64");
+      const chunk = Buffer.from(buffer.subarray(0, bytesRead));
       try {
-        await client.media.appendUpload(mediaId, {
-          body: { media: base64Chunk, segmentIndex },
-        });
+        await appendChunkMultipart(
+          client,
+          mediaId,
+          chunk,
+          segmentIndex,
+          fetchImpl,
+        );
       } catch (err) {
         throw new Error(
           `Media APPEND failed at segment ${segmentIndex}: ${(err as Error).message}`,
