@@ -80,6 +80,8 @@ Interact with the X (Twitter) API v2 from Claude Code. 36 commands covering post
 /plugin install x-twitter@from2001-useful-skills
 ```
 
+[Setup guide](./.claude/skills/x-twitter#setup)
+
 ## License
 
 MIT
