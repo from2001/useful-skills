@@ -282,4 +282,21 @@ describe("media fields in API calls", () => {
   it("TWEET_EXPANSIONS includes attachments.media_keys", () => {
     assert.ok(TWEET_EXPANSIONS.includes("attachments.media_keys"));
   });
+
+  // Pin the actual contents of MEDIA_FIELDS so accidental removal or
+  // misspelling of a field is caught here, not silently lost. The other
+  // tests in this file compare against the MEDIA_FIELDS symbol itself,
+  // which would still pass if a field were dropped.
+  it("MEDIA_FIELDS contains the expected field names", () => {
+    assert.deepEqual(MEDIA_FIELDS, [
+      "url",
+      "preview_image_url",
+      "type",
+      "width",
+      "height",
+      "alt_text",
+      "variants",
+      "duration_ms",
+    ]);
+  });
 });
