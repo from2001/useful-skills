@@ -20,6 +20,11 @@ export const MEDIA_FIELDS = [
   "width",
   "height",
   "alt_text",
+  // For type=video and type=animated_gif: `url` is empty in the X v2 API.
+  // `variants` carries the playable mp4/HLS URLs (per bitrate). `duration_ms`
+  // is populated for videos. Without these, callers only get a thumbnail.
+  "variants",
+  "duration_ms",
 ];
 
 // The @xdevplatform/xdk SDK camelCases all snake_case response fields
