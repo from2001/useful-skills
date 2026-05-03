@@ -20,6 +20,85 @@ import {
 
 const noSleep = async (_ms: number) => {};
 
+interface FetchCall {
+  url: string;
+  method: string;
+  headers: Record<string, string>;
+  body: Buffer;
+}
+
+function makeFakeFetch(opts: {
+  status?: number;
+  statusText?: string;
+  responseBody?: string;
+  calls?: FetchCall[];
+} = {}) {
+  const status = opts.status ?? 200;
+  const statusText = opts.statusText ?? "OK";
+  const responseBody = opts.responseBody ?? "";
+  const calls = opts.calls ?? [];
+  return async (url: string | URL, init?: {
+    method?: string;
+    headers?: Record<string, string>;
+    body?: Buffer | Uint8Array | string;
+  }) => {
+    const bodyBuf =
+      init?.body instanceof Buffer
+        ? init.body
+        : init?.body instanceof Uint8Array
+          ? Buffer.from(init.body)
+          : Buffer.from(typeof init?.body === "string" ? init.body : "");
+    calls.push({
+      url: String(url),
+      method: init?.method ?? "GET",
+      headers: init?.headers ?? {},
+      body: bodyBuf,
+    });
+    return {
+      ok: status >= 200 && status < 300,
+      status,
+      statusText,
+      text: async () => responseBody,
+    };
+  };
+}
+
+function clientWithOAuth1(media: Record<string, unknown>): ReturnType<typeof mockClient> {
+  return mockClient({
+    media,
+    oauth1: {
+      buildRequestHeader: async () => "OAuth oauth_consumer_key=\"k\"",
+    },
+    baseUrl: "https://api.x.com",
+  });
+}
+
+function parseMultipartFields(body: Buffer, boundary: string): {
+  segmentIndex?: string;
+  mediaBytes?: Buffer;
+} {
+  const sep = `--${boundary}`;
+  const text = body.toString("binary");
+  const parts = text.split(sep).filter((p) => p && p !== "--\r\n" && p !== "--");
+  const out: { segmentIndex?: string; mediaBytes?: Buffer } = {};
+  for (const partRaw of parts) {
+    const part = partRaw.startsWith("\r\n") ? partRaw.slice(2) : partRaw;
+    const trimmed = part.endsWith("\r\n") ? part.slice(0, -2) : part;
+    const headerEnd = trimmed.indexOf("\r\n\r\n");
+    if (headerEnd < 0) continue;
+    const headerBlock = trimmed.slice(0, headerEnd);
+    const value = trimmed.slice(headerEnd + 4);
+    const nameMatch = /name="([^"]+)"/.exec(headerBlock);
+    if (!nameMatch) continue;
+    if (nameMatch[1] === "segment_index") {
+      out.segmentIndex = value;
+    } else if (nameMatch[1] === "media") {
+      out.mediaBytes = Buffer.from(value, "binary");
+    }
+  }
+  return out;
+}
+
 function makeTempDir(): string {
   return mkdtempSync(join(tmpdir(), "x-media-"));
 }
@@ -79,21 +158,21 @@ describe("uploadChunked", () => {
       const initializeUpload = mock.fn(async () => ({
         data: { id: "media-1" },
       }));
-      const appendUpload = mock.fn(async () => ({ data: {} }));
       const finalizeUpload = mock.fn(async () => ({
         data: { id: "media-1" },
       }));
       const getUploadStatus = mock.fn(async () => ({ data: {} }));
-      const client = mockClient({
-        media: {
-          initializeUpload,
-          appendUpload,
-          finalizeUpload,
-          getUploadStatus,
-        },
+      const client = clientWithOAuth1({
+        initializeUpload,
+        finalizeUpload,
+        getUploadStatus,
       });
 
-      const id = await uploadChunked(client, file, { sleep: noSleep });
+      const fetchCalls: FetchCall[] = [];
+      const id = await uploadChunked(client, file, {
+        sleep: noSleep,
+        fetchImpl: makeFakeFetch({ calls: fetchCalls }),
+      });
       assert.equal(id, "media-1");
       assert.equal(initializeUpload.mock.callCount(), 1);
       const initBody = (
@@ -102,17 +181,21 @@ describe("uploadChunked", () => {
       assert.equal(initBody.mediaCategory, "tweet_gif");
       assert.equal(initBody.mediaType, "image/gif");
       assert.equal(initBody.totalBytes, 1024);
-      assert.equal(appendUpload.mock.callCount(), 1);
-      const [appendId, appendOpts] = appendUpload.mock.calls[0].arguments as [
-        string,
-        { body: { media: string; segmentIndex: number } },
-      ];
-      assert.equal(appendId, "media-1");
-      assert.equal(appendOpts.body.segmentIndex, 0);
+      assert.equal(fetchCalls.length, 1);
+      const call = fetchCalls[0];
+      assert.equal(call.method, "POST");
       assert.equal(
-        appendOpts.body.media,
-        Buffer.alloc(1024, 0xab).toString("base64"),
+        call.url,
+        "https://api.x.com/2/media/upload/media-1/append",
       );
+      assert.match(call.headers.Authorization, /^OAuth /);
+      const ctMatch = /multipart\/form-data; boundary=(.+)$/.exec(
+        call.headers["Content-Type"],
+      );
+      assert.ok(ctMatch, "Content-Type must be multipart/form-data");
+      const fields = parseMultipartFields(call.body, ctMatch![1]);
+      assert.equal(fields.segmentIndex, "0");
+      assert.deepEqual(fields.mediaBytes, Buffer.alloc(1024, 0xab));
       assert.equal(finalizeUpload.mock.callCount(), 1);
       assert.equal(finalizeUpload.mock.calls[0].arguments[0], "media-1");
       assert.equal(getUploadStatus.mock.callCount(), 0);
@@ -129,29 +212,28 @@ describe("uploadChunked", () => {
       const initializeUpload = mock.fn(async () => ({
         data: { id: "v-1" },
       }));
-      const appendUpload = mock.fn(async () => ({ data: {} }));
       const finalizeUpload = mock.fn(async () => ({ data: { id: "v-1" } }));
-      const client = mockClient({
-        media: { initializeUpload, appendUpload, finalizeUpload },
-      });
+      const client = clientWithOAuth1({ initializeUpload, finalizeUpload });
 
+      const fetchCalls: FetchCall[] = [];
       const id = await uploadChunked(client, file, {
         sleep: noSleep,
         chunkSize: 64 * 1024,
+        fetchImpl: makeFakeFetch({ calls: fetchCalls }),
       });
 
       assert.equal(id, "v-1");
-      assert.equal(appendUpload.mock.callCount(), 4);
-      const segments = appendUpload.mock.calls.map(
-        (c) =>
-          (c.arguments[1] as { body: { segmentIndex: number } }).body
-            .segmentIndex,
-      );
-      assert.deepEqual(segments, [0, 1, 2, 3]);
-      const totalBytes = appendUpload.mock.calls.reduce((sum, c) => {
-        const b = (c.arguments[1] as { body: { media: string } }).body.media;
-        return sum + Buffer.from(b, "base64").length;
-      }, 0);
+      assert.equal(fetchCalls.length, 4);
+      const segments: string[] = [];
+      let totalBytes = 0;
+      for (const call of fetchCalls) {
+        const ctMatch = /boundary=(.+)$/.exec(call.headers["Content-Type"]);
+        assert.ok(ctMatch);
+        const fields = parseMultipartFields(call.body, ctMatch![1]);
+        segments.push(fields.segmentIndex ?? "");
+        totalBytes += fields.mediaBytes?.length ?? 0;
+      }
+      assert.deepEqual(segments, ["0", "1", "2", "3"]);
       assert.equal(totalBytes, total);
     } finally {
       rmSync(dir, { recursive: true, force: true });
@@ -165,7 +247,6 @@ describe("uploadChunked", () => {
       const initializeUpload = mock.fn(async () => ({
         data: { id: "v-2" },
       }));
-      const appendUpload = mock.fn(async () => ({ data: {} }));
       const finalizeUpload = mock.fn(async () => ({
         data: {
           id: "v-2",
@@ -184,16 +265,16 @@ describe("uploadChunked", () => {
         }
         return { data: { processingInfo: { state: "succeeded" } } };
       });
-      const client = mockClient({
-        media: {
-          initializeUpload,
-          appendUpload,
-          finalizeUpload,
-          getUploadStatus,
-        },
+      const client = clientWithOAuth1({
+        initializeUpload,
+        finalizeUpload,
+        getUploadStatus,
       });
 
-      const id = await uploadChunked(client, file, { sleep: noSleep });
+      const id = await uploadChunked(client, file, {
+        sleep: noSleep,
+        fetchImpl: makeFakeFetch(),
+      });
       assert.equal(id, "v-2");
       assert.equal(getUploadStatus.mock.callCount(), 2);
       const [statusId, statusOpts] =
@@ -215,7 +296,6 @@ describe("uploadChunked", () => {
       const initializeUpload = mock.fn(async () => ({
         data: { id: "v-3" },
       }));
-      const appendUpload = mock.fn(async () => ({ data: {} }));
       const finalizeUpload = mock.fn(async () => ({
         data: {
           id: "v-3",
@@ -230,17 +310,18 @@ describe("uploadChunked", () => {
           },
         },
       }));
-      const client = mockClient({
-        media: {
-          initializeUpload,
-          appendUpload,
-          finalizeUpload,
-          getUploadStatus,
-        },
+      const client = clientWithOAuth1({
+        initializeUpload,
+        finalizeUpload,
+        getUploadStatus,
       });
 
       await assert.rejects(
-        () => uploadChunked(client, file, { sleep: noSleep }),
+        () =>
+          uploadChunked(client, file, {
+            sleep: noSleep,
+            fetchImpl: makeFakeFetch(),
+          }),
         /transcode failed/,
       );
     } finally {
@@ -255,7 +336,6 @@ describe("uploadChunked", () => {
       const initializeUpload = mock.fn(async () => ({
         data: { id: "v-4" },
       }));
-      const appendUpload = mock.fn(async () => ({ data: {} }));
       const finalizeUpload = mock.fn(async () => ({
         data: {
           id: "v-4",
@@ -265,20 +345,21 @@ describe("uploadChunked", () => {
       const getUploadStatus = mock.fn(async () => ({
         data: { processingInfo: { state: "pending", checkAfterSecs: 1 } },
       }));
-      const client = mockClient({
-        media: {
-          initializeUpload,
-          appendUpload,
-          finalizeUpload,
-          getUploadStatus,
-        },
+      const client = clientWithOAuth1({
+        initializeUpload,
+        finalizeUpload,
+        getUploadStatus,
       });
 
       const slowSleep = (_ms: number) =>
         new Promise<void>((r) => setTimeout(r, 5));
       await assert.rejects(
         () =>
-          uploadChunked(client, file, { sleep: slowSleep, maxWaitMs: 1 }),
+          uploadChunked(client, file, {
+            sleep: slowSleep,
+            maxWaitMs: 1,
+            fetchImpl: makeFakeFetch(),
+          }),
         /timed out/,
       );
     } finally {
@@ -293,11 +374,9 @@ describe("uploadChunked", () => {
       const initializeUpload = mock.fn(async () => ({
         data: { id: "x" },
       }));
-      const client = mockClient({
-        media: { initializeUpload, appendUpload: async () => ({}) },
-      });
+      const client = clientWithOAuth1({ initializeUpload });
       await assert.rejects(
-        () => uploadChunked(client, file),
+        () => uploadChunked(client, file, { fetchImpl: makeFakeFetch() }),
         /empty/,
       );
       assert.equal(initializeUpload.mock.callCount(), 0);
@@ -313,9 +392,9 @@ describe("uploadChunked", () => {
       const initializeUpload = mock.fn(async () => ({
         data: { id: "x" },
       }));
-      const client = mockClient({ media: { initializeUpload } });
+      const client = clientWithOAuth1({ initializeUpload });
       await assert.rejects(
-        () => uploadChunked(client, file),
+        () => uploadChunked(client, file, { fetchImpl: makeFakeFetch() }),
         /GIF exceeds 15 MB/,
       );
       assert.equal(initializeUpload.mock.callCount(), 0);
@@ -331,10 +410,43 @@ describe("uploadChunked", () => {
       const initializeUpload = mock.fn(async () => {
         throw new Error("boom-init");
       });
-      const client = mockClient({ media: { initializeUpload } });
+      const client = clientWithOAuth1({ initializeUpload });
       await assert.rejects(
-        () => uploadChunked(client, file, { sleep: noSleep }),
+        () =>
+          uploadChunked(client, file, {
+            sleep: noSleep,
+            fetchImpl: makeFakeFetch(),
+          }),
         /Media INIT failed: boom-init/,
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("surfaces APPEND HTTP errors with status, statusText, and body excerpt", async () => {
+    const dir = makeTempDir();
+    try {
+      const file = writeFixture(dir, "fun.gif", Buffer.alloc(64, 0xab));
+      const initializeUpload = mock.fn(async () => ({
+        data: { id: "media-err" },
+      }));
+      const finalizeUpload = mock.fn(async () => ({ data: { id: "media-err" } }));
+      const client = clientWithOAuth1({ initializeUpload, finalizeUpload });
+
+      await assert.rejects(
+        () =>
+          uploadChunked(client, file, {
+            sleep: noSleep,
+            fetchImpl: makeFakeFetch({
+              status: 400,
+              statusText: "Bad Request",
+              responseBody: JSON.stringify({
+                errors: [{ message: "Invalid segment_index" }],
+              }),
+            }),
+          }),
+        /Media APPEND failed at segment 0: HTTP 400 Bad Request: Invalid segment_index/,
       );
     } finally {
       rmSync(dir, { recursive: true, force: true });
@@ -349,9 +461,7 @@ describe("uploadMedia dispatch", () => {
       const file = writeFixture(dir, "a.png", Buffer.alloc(64, 0x06));
       const upload = mock.fn(async () => ({ data: { id: "img-1" } }));
       const initializeUpload = mock.fn(async () => ({ data: { id: "x" } }));
-      const client = mockClient({
-        media: { upload, initializeUpload, appendUpload: async () => ({}) },
-      });
+      const client = clientWithOAuth1({ upload, initializeUpload });
       const id = await uploadMedia(client, file);
       assert.equal(id, "img-1");
       assert.equal(upload.mock.callCount(), 1);
@@ -367,12 +477,12 @@ describe("uploadMedia dispatch", () => {
       const file = writeFixture(dir, "a.gif", Buffer.alloc(64, 0x07));
       const upload = mock.fn(async () => ({ data: { id: "ignored" } }));
       const initializeUpload = mock.fn(async () => ({ data: { id: "g-1" } }));
-      const appendUpload = mock.fn(async () => ({ data: {} }));
       const finalizeUpload = mock.fn(async () => ({ data: { id: "g-1" } }));
-      const client = mockClient({
-        media: { upload, initializeUpload, appendUpload, finalizeUpload },
+      const client = clientWithOAuth1({ upload, initializeUpload, finalizeUpload });
+      const id = await uploadMedia(client, file, {
+        sleep: noSleep,
+        fetchImpl: makeFakeFetch(),
       });
-      const id = await uploadMedia(client, file, { sleep: noSleep });
       assert.equal(id, "g-1");
       assert.equal(upload.mock.callCount(), 0);
       assert.equal(initializeUpload.mock.callCount(), 1);

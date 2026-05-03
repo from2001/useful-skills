@@ -284,13 +284,13 @@ describe("Pattern E — branching commands", () => {
 
     it("--media accepts a single mp4 via chunked upload", async () => {
       const dir = mkdtempSync(join(tmpdir(), "x-post-"));
+      const originalFetch = globalThis.fetch;
       try {
         const file = join(dir, "clip.mp4");
         writeFileSync(file, Buffer.alloc(2048, 0x09));
         const initializeUpload = mock.fn(async () => ({
           data: { id: "vid-9" },
         }));
-        const appendUpload = mock.fn(async () => ({ data: {} }));
         const finalizeUpload = mock.fn(async () => ({
           data: { id: "vid-9" },
         }));
@@ -298,9 +298,20 @@ describe("Pattern E — branching commands", () => {
           data: { id: "tweet-9", text: "v" },
         }));
         const client = mockClient({
-          media: { initializeUpload, appendUpload, finalizeUpload },
+          media: { initializeUpload, finalizeUpload },
           posts: { create },
+          oauth1: {
+            buildRequestHeader: async () => "OAuth oauth_consumer_key=\"k\"",
+          },
+          baseUrl: "https://api.x.com",
         });
+        // Stub global fetch so the multipart APPEND request doesn't hit the network.
+        globalThis.fetch = (async () => ({
+          ok: true,
+          status: 200,
+          statusText: "OK",
+          text: async () => "",
+        })) as unknown as typeof fetch;
         const result = await post(client, ["v", "--media", file]);
         assert.deepEqual(result, { data: { id: "tweet-9", text: "v" } });
         const body = create.mock.calls[0].arguments[0];
@@ -308,6 +319,7 @@ describe("Pattern E — branching commands", () => {
         assert.equal(initializeUpload.mock.callCount(), 1);
         assert.equal(finalizeUpload.mock.callCount(), 1);
       } finally {
+        globalThis.fetch = originalFetch;
         rmSync(dir, { recursive: true, force: true });
       }
     });
