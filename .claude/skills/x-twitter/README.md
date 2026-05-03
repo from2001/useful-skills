@@ -13,7 +13,7 @@
 | `search` | Search posts by query (recent or full archive) |
 | `get` | Retrieve post(s) by ID |
 | `thread` | Retrieve a full thread/conversation by any tweet ID |
-| `post` | Create a tweet (optionally with up to 4 images via `--media`, PNG/JPEG/WebP), reply, or quote tweet |
+| `post` | Create a tweet (optionally with up to 4 images, 1 GIF, or 1 video via `--media`), reply, or quote tweet |
 | `delete` | Delete a post |
 
 ### Engagement

@@ -63,8 +63,8 @@
     },
     {
       "name": "x-twitter",
-      "description": "Interact with X (Twitter) API v2 via OAuth 1.0a. 36-command skill to post tweets (with image attachments), search, engage, moderate, and analyze — including threads, communities, trending news, and analytics.",
-      "version": "1.9.0",
+      "description": "Interact with X (Twitter) API v2 via OAuth 1.0a. 36-command skill to post tweets (with image, animated GIF, or video attachments), search, engage, moderate, and analyze — including threads, communities, trending news, and analytics.",
+      "version": "1.10.0",
       "source": "./",
       "skills": ["./.claude/skills/x-twitter"],
       "category": "productivity"
