@@ -2,6 +2,8 @@
 
 36-command Claude Code skill for X/Twitter. Post, search, engage, moderate — all from your terminal.
 
+> **Attribution:** Imported as a one-time copy from [alberduris/skills](https://github.com/alberduris/skills/tree/main/plugins/x-twitter) (MIT License — see `LICENSE`). Maintained independently in this repository; upstream changes are not tracked automatically.
+
 ## Commands
 
 ### Core
