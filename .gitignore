@@ -15,6 +15,9 @@ downloads/
 eggs/
 .eggs/
 lib/
+# Negate ignore for x-twitter src/lib/ — TypeScript sources, not Python distribution artifacts
+!.claude/skills/x-twitter/src/lib/
+!.claude/skills/x-twitter/src/lib/**
 lib64/
 parts/
 sdist/
