@@ -1,0 +1,10 @@
+# Batch files require CRLF on Windows for reliable execution by cmd.exe
+# (multi-line if blocks, labels, etc.). Force checkout with CRLF.
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Bash launcher must keep LF so the shebang works on macOS/Linux
+csharp-roslyn-lsp text eol=lf
+
+# PowerShell tolerates either, but normalize to CRLF on Windows checkout
+*.ps1 text eol=crlf
