@@ -1,0 +1,200 @@
+import { describe, it, beforeEach, mock } from "node:test";
+import assert from "node:assert/strict";
+import { mockClient } from "./helpers/mock-client.js";
+import { _resetMyIdCache } from "../lib/resolve.js";
+import { inlineMedia, MEDIA_FIELDS, TWEET_EXPANSIONS } from "../lib/fields.js";
+import { get } from "../commands/get.js";
+import { search } from "../commands/search.js";
+import { timeline } from "../commands/timeline.js";
+import { mentions } from "../commands/mentions.js";
+import { quotes } from "../commands/quotes.js";
+import { bookmarks } from "../commands/bookmark.js";
+
+describe("inlineMedia", () => {
+  it("returns tweets unchanged when includes has no media", () => {
+    const tweets = [{ id: "1", text: "no media" }];
+    assert.deepEqual(inlineMedia(tweets, undefined), tweets);
+    assert.deepEqual(inlineMedia(tweets, {}), tweets);
+    assert.deepEqual(inlineMedia(tweets, { media: [] }), tweets);
+  });
+
+  it("returns tweet unchanged when it has no attachments", () => {
+    const tweets = [{ id: "1", text: "plain text" }];
+    const includes = {
+      media: [{ media_key: "abc", type: "photo", url: "https://example.com/img.jpg" }],
+    };
+    const result = inlineMedia(tweets, includes);
+    assert.deepEqual(result, tweets);
+  });
+
+  it("inlines media objects into tweet attachments", () => {
+    const mediaObj = { media_key: "abc", type: "photo", url: "https://example.com/img.jpg" };
+    const tweets = [
+      {
+        id: "1",
+        text: "has image",
+        attachments: { media_keys: ["abc"] },
+      },
+    ];
+    const includes = { media: [mediaObj] };
+    const [result] = inlineMedia(tweets, includes);
+
+    const attachments = result.attachments as Record<string, unknown>;
+    assert.deepEqual(attachments.media_keys, ["abc"]); // preserved for reference
+    const media = attachments.media as unknown[];
+    assert.equal(media?.length, 1);
+    assert.deepEqual(media?.[0], mediaObj);
+  });
+
+  it("inlines multiple media keys in order", () => {
+    const m1 = { media_key: "k1", type: "photo", url: "https://example.com/1.jpg" };
+    const m2 = { media_key: "k2", type: "photo", url: "https://example.com/2.jpg" };
+    const tweets = [{ id: "1", text: "two images", attachments: { media_keys: ["k1", "k2"] } }];
+    const includes = { media: [m2, m1] }; // different order in includes
+    const [result] = inlineMedia(tweets, includes);
+
+    const media = (result.attachments as Record<string, unknown>)?.media as unknown[];
+    assert.equal(media.length, 2);
+    assert.deepEqual(media[0], m1); // preserves tweet's media_keys order
+    assert.deepEqual(media[1], m2);
+  });
+
+  it("handles multiple tweets with different media", () => {
+    const m1 = { media_key: "k1", type: "photo", url: "https://example.com/1.jpg" };
+    const m2 = { media_key: "k2", type: "photo", url: "https://example.com/2.jpg" };
+    const tweets = [
+      { id: "1", text: "one", attachments: { media_keys: ["k1"] } },
+      { id: "2", text: "no media" },
+      { id: "3", text: "two", attachments: { media_keys: ["k2"] } },
+    ];
+    const includes = { media: [m1, m2] };
+    const result = inlineMedia(tweets, includes);
+
+    const t1media = (result[0].attachments as Record<string, unknown>)?.media as unknown[];
+    assert.deepEqual(t1media, [m1]);
+    assert.deepEqual(result[1], { id: "2", text: "no media" });
+    const t3media = (result[2].attachments as Record<string, unknown>)?.media as unknown[];
+    assert.deepEqual(t3media, [m2]);
+  });
+
+  it("skips unknown media keys gracefully", () => {
+    const tweets = [{ id: "1", text: "x", attachments: { media_keys: ["missing-key"] } }];
+    const includes = { media: [{ media_key: "other", type: "photo", url: "https://example.com/x.jpg" }] };
+    const [result] = inlineMedia(tweets, includes);
+    // No media inlined because key not found — attachments unchanged
+    assert.deepEqual(result, tweets[0]);
+  });
+});
+
+describe("media fields in API calls", () => {
+  beforeEach(() => {
+    _resetMyIdCache();
+  });
+
+  it("get: passes mediaFields to getById", async () => {
+    const getById = mock.fn(async () => ({ data: { id: "1", text: "hi" } }));
+    const client = mockClient({ posts: { getById } });
+
+    await get(client, ["1"]);
+    const opts = getById.mock.calls[0].arguments[1] as Record<string, unknown>;
+    assert.deepEqual(opts.mediaFields, MEDIA_FIELDS);
+    assert.ok((opts.expansions as string[]).includes("attachments.media_keys"));
+  });
+
+  it("get: inlines media in non-raw single result", async () => {
+    const mediaObj = { media_key: "mk1", type: "photo", url: "https://pbs.twimg.com/img.jpg" };
+    const getById = mock.fn(async () => ({
+      data: { id: "1", text: "img post", attachments: { media_keys: ["mk1"] } },
+      includes: { media: [mediaObj] },
+    }));
+    const client = mockClient({ posts: { getById } });
+
+    const result = await get(client, ["1"]) as Record<string, unknown>;
+    const media = (result.attachments as Record<string, unknown>)?.media as unknown[];
+    assert.ok(Array.isArray(media), "media should be inlined");
+    assert.deepEqual(media[0], mediaObj);
+  });
+
+  it("get: inlines media in non-raw multiple results", async () => {
+    const mediaObj = { media_key: "mk2", type: "photo", url: "https://pbs.twimg.com/img2.jpg" };
+    const getByIds = mock.fn(async () => ({
+      data: [
+        { id: "1", text: "post with media", attachments: { media_keys: ["mk2"] } },
+        { id: "2", text: "plain post" },
+      ],
+      includes: { media: [mediaObj] },
+    }));
+    const client = mockClient({ posts: { getByIds } });
+
+    const result = await get(client, ["1,2"]) as Record<string, unknown>[];
+    const t1media = (result[0].attachments as Record<string, unknown>)?.media as unknown[];
+    assert.deepEqual(t1media, [mediaObj]);
+    assert.equal(result[1].attachments, undefined);
+  });
+
+  it("search: passes mediaFields", async () => {
+    const searchRecent = mock.fn(async () => ({ data: [] }));
+    const client = mockClient({ posts: { searchRecent } });
+
+    await search(client, ["cats"]);
+    const opts = searchRecent.mock.calls[0].arguments[1] as Record<string, unknown>;
+    assert.deepEqual(opts.mediaFields, MEDIA_FIELDS);
+    assert.ok((opts.expansions as string[]).includes("attachments.media_keys"));
+  });
+
+  it("search: inlines media in results", async () => {
+    const mediaObj = { media_key: "sm1", type: "photo", url: "https://pbs.twimg.com/s.jpg" };
+    const searchRecent = mock.fn(async () => ({
+      data: [{ id: "1", text: "search hit", attachments: { media_keys: ["sm1"] } }],
+      includes: { media: [mediaObj] },
+    }));
+    const client = mockClient({ posts: { searchRecent } });
+
+    const result = await search(client, ["cats"]) as Record<string, unknown>[];
+    const media = (result[0].attachments as Record<string, unknown>)?.media as unknown[];
+    assert.deepEqual(media, [mediaObj]);
+  });
+
+  it("timeline: passes mediaFields", async () => {
+    const getTimeline = mock.fn(async () => ({ data: [] }));
+    const getMe = mock.fn(async () => ({ data: { id: "me1" } }));
+    const client = mockClient({ users: { getTimeline, getMe } });
+
+    await timeline(client, []);
+    const opts = getTimeline.mock.calls[0].arguments[1] as Record<string, unknown>;
+    assert.deepEqual(opts.mediaFields, MEDIA_FIELDS);
+  });
+
+  it("mentions: passes mediaFields", async () => {
+    const getMentions = mock.fn(async () => ({ data: [] }));
+    const getMe = mock.fn(async () => ({ data: { id: "me1" } }));
+    const client = mockClient({ users: { getMentions, getMe } });
+
+    await mentions(client, []);
+    const opts = getMentions.mock.calls[0].arguments[1] as Record<string, unknown>;
+    assert.deepEqual(opts.mediaFields, MEDIA_FIELDS);
+  });
+
+  it("quotes: passes mediaFields", async () => {
+    const getQuoted = mock.fn(async () => ({ data: [] }));
+    const client = mockClient({ posts: { getQuoted } });
+
+    await quotes(client, ["1"]);
+    const opts = getQuoted.mock.calls[0].arguments[1] as Record<string, unknown>;
+    assert.deepEqual(opts.mediaFields, MEDIA_FIELDS);
+  });
+
+  it("bookmarks: passes mediaFields", async () => {
+    const getBookmarks = mock.fn(async () => ({ data: [] }));
+    const getMe = mock.fn(async () => ({ data: { id: "me1" } }));
+    const client = mockClient({ users: { getBookmarks, getMe } });
+
+    await bookmarks(client, []);
+    const opts = getBookmarks.mock.calls[0].arguments[1] as Record<string, unknown>;
+    assert.deepEqual(opts.mediaFields, MEDIA_FIELDS);
+  });
+
+  it("TWEET_EXPANSIONS includes attachments.media_keys", () => {
+    assert.ok(TWEET_EXPANSIONS.includes("attachments.media_keys"));
+  });
+});

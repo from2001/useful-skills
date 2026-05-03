@@ -1,6 +1,6 @@
 import type { Client } from "@xdevplatform/xdk";
 import { parseArgs, RAW } from "../lib/args.js";
-import { TWEET_FIELDS, TWEET_EXPANSIONS, TWEET_USER_FIELDS } from "../lib/fields.js";
+import { TWEET_FIELDS, TWEET_EXPANSIONS, TWEET_USER_FIELDS, MEDIA_FIELDS, inlineMedia } from "../lib/fields.js";
 
 function articleHint(tweet: Record<string, unknown>): string | undefined {
   const article = tweet.article as Record<string, unknown> | undefined;
@@ -32,17 +32,24 @@ export async function get(
     tweetFields: flags.tweetFields,
     expansions: TWEET_EXPANSIONS,
     userFields: TWEET_USER_FIELDS,
+    mediaFields: MEDIA_FIELDS,
   };
 
   if (ids.length === 1) {
     const response = await client.posts.getById(ids[0], options);
-    const data = flags.raw ? response : response.data;
-    const hint = !flags.raw && data ? articleHint(data as Record<string, unknown>) : undefined;
+    if (flags.raw) return response;
+    const raw = response.data as Record<string, unknown> | undefined;
+    if (!raw) return raw;
+    const [data] = inlineMedia([raw], response.includes as Record<string, unknown> | undefined);
+    const hint = articleHint(data);
     if (hint) return { hint, data };
     return data;
   }
 
   const response = await client.posts.getByIds(ids, options);
-  const data = flags.raw ? response : (response.data ?? []);
-  return data;
+  if (flags.raw) return response;
+  return inlineMedia(
+    (response.data ?? []) as Record<string, unknown>[],
+    response.includes as Record<string, unknown> | undefined,
+  );
 }

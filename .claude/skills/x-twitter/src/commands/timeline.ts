@@ -1,6 +1,6 @@
 import type { Client } from "@xdevplatform/xdk";
 import { parseArgs, PAGINATION, TEMPORAL, RAW } from "../lib/args.js";
-import { TWEET_FIELDS, TWEET_EXPANSIONS, TWEET_USER_FIELDS } from "../lib/fields.js";
+import { TWEET_FIELDS, TWEET_EXPANSIONS, TWEET_USER_FIELDS, MEDIA_FIELDS, inlineMedia } from "../lib/fields.js";
 import { resolveMyId } from "../lib/resolve.js";
 import { resolveEnum } from "../lib/enums.js";
 
@@ -31,6 +31,7 @@ export async function timeline(
     tweetFields: TWEET_FIELDS,
     expansions: TWEET_EXPANSIONS,
     userFields: TWEET_USER_FIELDS,
+    mediaFields: MEDIA_FIELDS,
     ...(flags.maxResults !== undefined && { maxResults: flags.maxResults }),
     ...(flags.nextToken !== undefined && { paginationToken: flags.nextToken }),
     ...(flags.startTime !== undefined && { startTime: flags.startTime }),
@@ -39,5 +40,10 @@ export async function timeline(
   };
 
   const response = await client.users.getTimeline(myId, options);
-  return flags.raw ? response : (response.data ?? []);
+  return flags.raw
+    ? response
+    : inlineMedia(
+        (response.data ?? []) as Record<string, unknown>[],
+        response.includes as Record<string, unknown> | undefined,
+      );
 }
