@@ -1,6 +1,6 @@
 {
   "name": "from2001-useful-skills",
-  "version": "1.12.1",
+  "version": "1.14.0",
   "description": "A collection of useful agent skills for Claude Code",
   "owner": {
     "name": "Masahiro Yamaguchi"
