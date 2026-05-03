@@ -72,6 +72,14 @@ Microsoft Roslyn-based C# language server for Claude Code. Drop-in replacement f
 /plugin install csharp-roslyn-lsp@from2001-useful-skills
 ```
 
+### x-twitter
+
+Interact with the X (Twitter) API v2 from Claude Code. 36 commands covering post, search, engagement, social, feeds, bookmarks, moderation, analytics, discovery, communities, and trending news — using your own OAuth 1.0a credentials. Based on [alberduris/skills](https://github.com/alberduris/skills/tree/main/plugins/x-twitter) (imported as a one-time copy; maintained independently here).
+
+```
+/plugin install x-twitter@from2001-useful-skills
+```
+
 ## License
 
 MIT
