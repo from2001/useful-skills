@@ -1,6 +1,6 @@
 import type { Client } from "@xdevplatform/xdk";
 import { parseArgs, RAW } from "../lib/args.js";
-import { TWEET_FIELDS, TWEET_EXPANSIONS, TWEET_USER_FIELDS } from "../lib/fields.js";
+import { TWEET_FIELDS, TWEET_EXPANSIONS, TWEET_USER_FIELDS, MEDIA_FIELDS, inlineMedia } from "../lib/fields.js";
 
 interface ThreadFlags {
   tweetId: string;
@@ -24,6 +24,7 @@ export async function thread(
     tweetFields: TWEET_FIELDS,
     expansions: TWEET_EXPANSIONS,
     userFields: TWEET_USER_FIELDS,
+    mediaFields: MEDIA_FIELDS,
   };
 
   // 1. Fetch the given tweet to obtain its conversation_id
@@ -39,7 +40,19 @@ export async function thread(
   const query = `conversation_id:${conversationId}`;
   const seen = new Set<string>();
   const tweets: Record<string, unknown>[] = [];
+  // Dedup media across pages by media key (SDK uses camelCase `mediaKey`,
+  // raw API uses `media_key`; accept either).
+  const mediaByKey = new Map<string, Record<string, unknown>>();
+  const collectMedia = (arr: Record<string, unknown>[] | undefined) => {
+    if (!arr) return;
+    for (const m of arr) {
+      const k = (m.mediaKey ?? m.media_key) as string | undefined;
+      if (typeof k === "string" && !mediaByKey.has(k)) mediaByKey.set(k, m);
+    }
+  };
   let nextToken: string | undefined;
+
+  collectMedia(seedResponse.includes?.media as Record<string, unknown>[] | undefined);
 
   do {
     const searchOpts = {
@@ -63,6 +76,8 @@ export async function thread(
       }
     }
 
+    collectMedia(response.includes?.media as Record<string, unknown>[] | undefined);
+
     nextToken = (response.meta as { next_token?: string } | undefined)?.next_token;
   } while (nextToken);
 
@@ -74,6 +89,7 @@ export async function thread(
       const rootResponse = await client.posts.getById(conversationId, options);
       const rootTweet = rootResponse.data as Record<string, unknown> | undefined;
       if (rootTweet) tweets.unshift(rootTweet);
+      collectMedia(rootResponse.includes?.media as Record<string, unknown>[] | undefined);
     }
   }
 
@@ -89,16 +105,19 @@ export async function thread(
     return ta - tb;
   });
 
-  // 6. Hint if recent search likely missed tweets
+  // 6. Inline media from all collected includes
+  const enriched = inlineMedia(tweets, { media: Array.from(mediaByKey.values()) });
+
+  // 7. Hint if recent search likely missed tweets
   const hints: string[] = [];
-  if (!flags.all && tweets.length <= 1) {
+  if (!flags.all && enriched.length <= 1) {
     hints.push(
       "Hint: recent search only covers the last 7 days. If this thread is older, use --all (requires X_API_BEARER_TOKEN).",
     );
   }
 
   if (hints.length || flags.raw) {
-    return { ...(hints.length && { hint: hints.join(" ") }), data: tweets };
+    return { ...(hints.length && { hint: hints.join(" ") }), data: enriched };
   }
-  return tweets;
+  return enriched;
 }
