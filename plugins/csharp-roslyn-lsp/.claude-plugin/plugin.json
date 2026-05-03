@@ -1,7 +1,7 @@
 {
   "name": "csharp-roslyn-lsp",
   "description": "Microsoft Roslyn-based C# language server for Claude Code. Drop-in alternative to csharp-lsp@claude-plugins-official for projects whose .csproj files Roslyn handles but csharp-ls rejects (Unity, generated SDK-style csproj with explicit Sdk.props imports, etc.).",
-  "version": "1.0.0",
+  "version": "1.1.1",
   "author": {
     "name": "Masahiro Yamaguchi"
   },
