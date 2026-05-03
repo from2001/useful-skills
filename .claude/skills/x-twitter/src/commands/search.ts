@@ -1,6 +1,6 @@
 import type { Client } from "@xdevplatform/xdk";
 import { parseArgs, PAGINATION, TEMPORAL, RAW } from "../lib/args.js";
-import { TWEET_FIELDS, TWEET_EXPANSIONS, TWEET_USER_FIELDS } from "../lib/fields.js";
+import { TWEET_FIELDS, TWEET_EXPANSIONS, TWEET_USER_FIELDS, MEDIA_FIELDS, inlineMedia } from "../lib/fields.js";
 import { resolveEnum } from "../lib/enums.js";
 
 interface SearchFlags {
@@ -57,6 +57,7 @@ export async function search(
     tweetFields: flags.tweetFields,
     expansions: TWEET_EXPANSIONS,
     userFields: TWEET_USER_FIELDS,
+    mediaFields: MEDIA_FIELDS,
     ...(flags.maxResults !== undefined && { maxResults: flags.maxResults }),
     ...(flags.sortOrder !== undefined && { sortOrder: flags.sortOrder }),
     ...(flags.startTime !== undefined && { startTime: flags.startTime }),
@@ -70,7 +71,12 @@ export async function search(
     ? await client.posts.searchAll(flags.query, options)
     : await client.posts.searchRecent(flags.query, options);
 
-  const data = flags.raw ? response : (response.data ?? []);
+  const data = flags.raw
+    ? response
+    : inlineMedia(
+        (response.data ?? []) as Record<string, unknown>[],
+        response.includes as Record<string, unknown> | undefined,
+      );
 
   // Nudge: empty results on recent search → 7-day limitation
   if (!flags.all && Array.isArray(data) && data.length === 0) {
