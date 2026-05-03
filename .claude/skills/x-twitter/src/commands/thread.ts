@@ -40,12 +40,19 @@ export async function thread(
   const query = `conversation_id:${conversationId}`;
   const seen = new Set<string>();
   const tweets: Record<string, unknown>[] = [];
-  const allMedia: Record<string, unknown>[] = [];
+  // Dedup media across pages by media key (SDK uses camelCase `mediaKey`,
+  // raw API uses `media_key`; accept either).
+  const mediaByKey = new Map<string, Record<string, unknown>>();
+  const collectMedia = (arr: Record<string, unknown>[] | undefined) => {
+    if (!arr) return;
+    for (const m of arr) {
+      const k = (m.mediaKey ?? m.media_key) as string | undefined;
+      if (typeof k === "string" && !mediaByKey.has(k)) mediaByKey.set(k, m);
+    }
+  };
   let nextToken: string | undefined;
 
-  // Collect media from seed tweet fetch
-  const seedMediaArr = (seedResponse.includes?.media as Record<string, unknown>[] | undefined) ?? [];
-  allMedia.push(...seedMediaArr);
+  collectMedia(seedResponse.includes?.media as Record<string, unknown>[] | undefined);
 
   do {
     const searchOpts = {
@@ -69,8 +76,7 @@ export async function thread(
       }
     }
 
-    const pageMedia = (response.includes?.media as Record<string, unknown>[] | undefined) ?? [];
-    allMedia.push(...pageMedia);
+    collectMedia(response.includes?.media as Record<string, unknown>[] | undefined);
 
     nextToken = (response.meta as { next_token?: string } | undefined)?.next_token;
   } while (nextToken);
@@ -83,8 +89,7 @@ export async function thread(
       const rootResponse = await client.posts.getById(conversationId, options);
       const rootTweet = rootResponse.data as Record<string, unknown> | undefined;
       if (rootTweet) tweets.unshift(rootTweet);
-      const rootMedia = (rootResponse.includes?.media as Record<string, unknown>[] | undefined) ?? [];
-      allMedia.push(...rootMedia);
+      collectMedia(rootResponse.includes?.media as Record<string, unknown>[] | undefined);
     }
   }
 
@@ -101,7 +106,7 @@ export async function thread(
   });
 
   // 6. Inline media from all collected includes
-  const enriched = inlineMedia(tweets, { media: allMedia });
+  const enriched = inlineMedia(tweets, { media: Array.from(mediaByKey.values()) });
 
   // 7. Hint if recent search likely missed tweets
   const hints: string[] = [];
