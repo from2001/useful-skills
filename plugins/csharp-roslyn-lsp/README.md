@@ -11,7 +11,9 @@ This plugin runs the same Roslyn-based language server that the VS Code C# exten
 ## Requirements
 
 - The [VS Code C# extension](https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.csharp) (`ms-dotnettools.csharp`) installed at the user level. The launcher auto-detects the latest installed version and reuses its bundled Roslyn server and .NET runtime.
-- macOS or Linux on arm64 or x86_64. Windows is not currently supported (the launcher is a Bash script).
+- macOS or Linux on arm64 or x86_64, **or Windows 10/11 on x64 or arm64**. The repo ships two launchers:
+  - `bin/csharp-roslyn-lsp` (Bash, used on macOS/Linux)
+  - `bin/csharp-roslyn-lsp.cmd` + `bin/csharp-roslyn-lsp-paths.ps1` (used on Windows)
 
 ## Installation
 
@@ -34,12 +36,43 @@ If the official `csharp-lsp` plugin is also enabled, disable it for this project
 
 Then `/reload-plugins`.
 
+### Windows: one-time PATH setup
+
+Claude Code does not currently add a plugin's `bin/` directory to the LSP child process's `PATH` on Windows. Until that ships upstream, `child_process.spawn('csharp-roslyn-lsp')` cannot locate `csharp-roslyn-lsp.cmd` and Claude Code returns:
+
+```
+Error performing documentSymbol: ENOENT: no such file or directory, uv_spawn 'csharp-roslyn-lsp'
+```
+
+Work around it by adding the cached plugin `bin/` directory to your **user** `PATH` once. Run in PowerShell:
+
+```powershell
+$bin = Get-ChildItem "$env:USERPROFILE\.claude\plugins\cache\from2001-useful-skills\csharp-roslyn-lsp" `
+       -Directory -ErrorAction Stop |
+       Sort-Object @{Expression = { try { [version]$_.Name } catch { [version]'0.0.0' } }} -Descending |
+       Select-Object -First 1 -ExpandProperty FullName
+$bin = Join-Path $bin 'bin'
+$user = [Environment]::GetEnvironmentVariable('Path', 'User')
+if (-not (($user -split ';') -contains $bin)) {
+    [Environment]::SetEnvironmentVariable('Path', "$bin;$user", 'User')
+    Write-Output "Added to user PATH: $bin"
+}
+```
+
+Restart Claude Code afterwards so the new `PATH` is picked up. Note that the cache path includes the installed plugin version (e.g. `1.0.0\bin`); when the plugin auto-updates to a new version the entry will go stale — re-run the snippet to repoint it.
+
 ## Verifying
 
-After install, ask Claude Code to use its `LSP` tool with `documentSymbol` on any `.cs` file. The wrapper logs to `$TMPDIR/claude-csharp-roslyn-lsp/`, and the running process appears in `pgrep -af Microsoft.CodeAnalysis.LanguageServer` as a child of `dotnet`.
+After install, ask Claude Code to use its `LSP` tool with `documentSymbol` on any `.cs` file. The wrapper writes startup logs to a per-OS temp directory:
+
+- macOS/Linux: `$TMPDIR/claude-csharp-roslyn-lsp/` (or `/tmp/claude-csharp-roslyn-lsp/`)
+- Windows: `%TEMP%\claude-csharp-roslyn-lsp\`
+
+The running process appears as a `dotnet` child hosting `Microsoft.CodeAnalysis.LanguageServer.dll` — `pgrep -af Microsoft.CodeAnalysis.LanguageServer` on Unix, or `tasklist /v /fi "imagename eq dotnet.exe"` (or `Get-CimInstance Win32_Process -Filter "Name='dotnet.exe'"`) on Windows.
 
 ## Troubleshooting
 
-- **`VS Code C# extension not found`** — install the extension. The wrapper globs `~/.vscode/extensions/ms-dotnettools.csharp-*-<os>-<arch>`; if you use a non-standard VS Code variant (e.g., a portable install), make sure that extensions directory exists.
-- **`no .NET host found`** — install either the VS Code C# extension (it brings a matching .NET runtime via `ms-dotnettools.vscode-dotnet-runtime`) or .NET 10+ system-wide.
-- **No symbols returned but no error** — check the running process with `pgrep -af LanguageServer`. If only `csharp-ls` is running, the plugin is not loaded; verify `enabledPlugins` and run `/reload-plugins`.
+- **`ENOENT: uv_spawn 'csharp-roslyn-lsp'` on Windows** — the plugin's `bin/` directory is not on the Claude Code child-process `PATH`. Run the PowerShell snippet under **Windows: one-time PATH setup** above and restart Claude Code.
+- **`VS Code C# extension not found`** — install the extension. The Unix launcher globs `~/.vscode/extensions/ms-dotnettools.csharp-*-<os>-<arch>`; the Windows launcher globs `%USERPROFILE%\.vscode\extensions\ms-dotnettools.csharp-*-win32-<arch>`. If you use a non-standard VS Code variant (e.g. a portable install), make sure that extensions directory exists.
+- **`no .NET host found`** — install either the VS Code C# extension (it brings a matching .NET runtime via `ms-dotnettools.vscode-dotnet-runtime`) or .NET 10+ system-wide. The Windows launcher additionally checks `%APPDATA%\Code\User\globalStorage\ms-dotnettools.vscode-dotnet-runtime\.dotnet\<ver>~<arch>~aspnetcore\dotnet.exe`.
+- **No symbols returned but no error** — check the running process. If only `csharp-ls` is running, the plugin is not loaded; verify `enabledPlugins` and run `/reload-plugins`.
