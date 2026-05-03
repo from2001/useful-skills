@@ -1,7 +1,7 @@
 import type { Client } from "@xdevplatform/xdk";
 import { parseArgs } from "../lib/args.js";
 import { resolveEnum } from "../lib/enums.js";
-import { uploadImage } from "../lib/media.js";
+import { classifyMedia, uploadMedia } from "../lib/media.js";
 
 interface PostFlags {
   text: string;
@@ -42,14 +42,22 @@ export async function post(
   }
 
   if (flags.mediaPaths && flags.mediaPaths.length > 0) {
-    if (flags.mediaPaths.length > 4) {
+    const kinds = flags.mediaPaths.map((p) => classifyMedia(p));
+    const hasGifOrVideo = kinds.some((k) => k === "gif" || k === "video");
+    const hasImage = kinds.some((k) => k === "image");
+    if (hasGifOrVideo && (hasImage || flags.mediaPaths.length > 1)) {
+      throw new Error(
+        "--media: a tweet may include up to 4 images, OR exactly 1 animated GIF, OR exactly 1 video — not a mix",
+      );
+    }
+    if (hasImage && flags.mediaPaths.length > 4) {
       throw new Error(
         `--media accepts at most 4 image paths (got ${flags.mediaPaths.length})`,
       );
     }
     const mediaIds: string[] = [];
     for (const path of flags.mediaPaths) {
-      mediaIds.push(await uploadImage(client, path));
+      mediaIds.push(await uploadMedia(client, path));
     }
     body.media = { mediaIds };
   }

@@ -4,7 +4,7 @@ description: Interact with X (Twitter) API v2. Post tweets, search, engage, mode
 license: MIT
 metadata:
   author: alberduris
-  version: "1.8.0"
+  version: "1.10.0"
   tags: x, twitter, x-twitter, twitter-api, social-media, tweets, automation
 allowed-tools: Bash(node *), Bash(npm *), Bash(npx *), Bash(ls *)
 ---
@@ -19,7 +19,7 @@ Core:
 a) `me` — authenticated user's own account data (profile, metrics, verification). @docs/me.md.
 b) `search` — search posts by query. IMPORTANT: by default searches only the last 7 days; use `--all` (requires X_API_BEARER_TOKEN) for full archive. Do NOT use `search` with `conversation_id:` to read threads — use `thread` instead. @docs/search.md.
 c) `get` — retrieve one or more posts by ID. @docs/get.md.
-d) `post` — create a tweet, reply, or quote tweet. Optionally attach up to 4 images via `--media <paths>` (comma-separated PNG/JPEG/WebP, ≤5 MB each). @docs/post.md.
+d) `post` — create a tweet, reply, or quote tweet. Optionally attach via `--media <paths>` either up to 4 images (PNG/JPEG/WebP, ≤5 MB each) OR 1 animated GIF (≤15 MB) OR 1 video (MP4/MOV/WebM, ≤512 MB). Mixing image with GIF/video is rejected. Video uploads block on transcode polling (up to 10 min). @docs/post.md.
 e) `delete` — delete a post owned by the authenticated user. @docs/delete.md.
 f) `thread` — retrieve a full thread/conversation given any tweet ID. Auto-resolves the conversation, paginates, and returns all tweets sorted chronologically. Use `--all` for threads older than 7 days. @docs/thread.md.
 

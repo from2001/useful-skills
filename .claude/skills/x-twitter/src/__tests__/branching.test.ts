@@ -1,5 +1,8 @@
 import { describe, it, beforeEach, mock } from "node:test";
 import assert from "node:assert/strict";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { mockClient } from "./helpers/mock-client.js";
 import { _resetMyIdCache } from "../lib/resolve.js";
 import { user } from "../commands/user.js";
@@ -257,6 +260,56 @@ describe("Pattern E — branching commands", () => {
       assert.deepEqual(body.reply, { inReplyToTweetId: "parent1" });
       assert.equal(body.quoteTweetId, "orig1");
       assert.equal(body.replySettings, "following");
+    });
+
+    it("--media rejects multiple GIFs", async () => {
+      const create = mock.fn(async () => ({ data: { id: "x" } }));
+      const client = mockClient({ posts: { create } });
+      await assert.rejects(
+        () => post(client, ["t", "--media", "a.gif,b.gif"]),
+        /not a mix/,
+      );
+      assert.equal(create.mock.callCount(), 0);
+    });
+
+    it("--media rejects mixing image with video", async () => {
+      const create = mock.fn(async () => ({ data: { id: "x" } }));
+      const client = mockClient({ posts: { create } });
+      await assert.rejects(
+        () => post(client, ["t", "--media", "a.png,b.mp4"]),
+        /not a mix/,
+      );
+      assert.equal(create.mock.callCount(), 0);
+    });
+
+    it("--media accepts a single mp4 via chunked upload", async () => {
+      const dir = mkdtempSync(join(tmpdir(), "x-post-"));
+      try {
+        const file = join(dir, "clip.mp4");
+        writeFileSync(file, Buffer.alloc(2048, 0x09));
+        const initializeUpload = mock.fn(async () => ({
+          data: { id: "vid-9" },
+        }));
+        const appendUpload = mock.fn(async () => ({ data: {} }));
+        const finalizeUpload = mock.fn(async () => ({
+          data: { id: "vid-9" },
+        }));
+        const create = mock.fn(async () => ({
+          data: { id: "tweet-9", text: "v" },
+        }));
+        const client = mockClient({
+          media: { initializeUpload, appendUpload, finalizeUpload },
+          posts: { create },
+        });
+        const result = await post(client, ["v", "--media", file]);
+        assert.deepEqual(result, { data: { id: "tweet-9", text: "v" } });
+        const body = create.mock.calls[0].arguments[0];
+        assert.deepEqual(body.media, { mediaIds: ["vid-9"] });
+        assert.equal(initializeUpload.mock.callCount(), 1);
+        assert.equal(finalizeUpload.mock.callCount(), 1);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
     });
   });
 });
