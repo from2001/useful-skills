@@ -1,12 +1,14 @@
 import type { Client } from "@xdevplatform/xdk";
 import { parseArgs } from "../lib/args.js";
 import { resolveEnum } from "../lib/enums.js";
+import { uploadImage } from "../lib/media.js";
 
 interface PostFlags {
   text: string;
   replyTo?: string;
   quoteTweetId?: string;
   replySettings?: string;
+  mediaPaths?: string[];
 }
 
 export async function post(
@@ -19,6 +21,7 @@ export async function post(
       "--reply-to": { key: "replyTo", type: "string" },
       "--quote": { key: "quoteTweetId", type: "string" },
       "--reply-settings": { key: "replySettings", type: "string" },
+      "--media": { key: "mediaPaths", type: "string[]" },
     },
   });
 
@@ -36,6 +39,19 @@ export async function post(
   }
   if (flags.replySettings) {
     body.replySettings = flags.replySettings;
+  }
+
+  if (flags.mediaPaths && flags.mediaPaths.length > 0) {
+    if (flags.mediaPaths.length > 4) {
+      throw new Error(
+        `--media accepts at most 4 image paths (got ${flags.mediaPaths.length})`,
+      );
+    }
+    const mediaIds: string[] = [];
+    for (const path of flags.mediaPaths) {
+      mediaIds.push(await uploadImage(client, path));
+    }
+    body.media = { mediaIds };
   }
 
   return client.posts.create(body);
