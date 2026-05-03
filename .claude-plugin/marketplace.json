@@ -1,6 +1,6 @@
 {
   "name": "from2001-useful-skills",
-  "version": "1.14.5",
+  "version": "1.14.6",
   "description": "A collection of useful agent skills for Claude Code",
   "owner": {
     "name": "Masahiro Yamaguchi"
@@ -57,7 +57,7 @@
     {
       "name": "csharp-roslyn-lsp",
       "description": "Microsoft Roslyn-based C# language server for Claude Code. Drop-in replacement for csharp-lsp@claude-plugins-official for projects whose .csproj files Roslyn handles but csharp-ls rejects (Unity, generated SDK-style csproj with explicit Sdk.props imports, etc.).",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "source": "./plugins/csharp-roslyn-lsp",
       "category": "developer-tools"
     },

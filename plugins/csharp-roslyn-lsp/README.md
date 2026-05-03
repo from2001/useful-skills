@@ -36,6 +36,26 @@ If the official `csharp-lsp` plugin is also enabled, disable it for this project
 
 Then `/reload-plugins`.
 
+### macOS / Linux: one-time PATH setup
+
+Claude Code does not currently add a plugin's `bin/` directory to the LSP child process's `PATH` on macOS or Linux either. Even though `which csharp-roslyn-lsp` succeeds in your interactive shell after install, the LSP-tool subprocess uses a more minimal `$PATH` that does not include the plugin cache, so Claude Code returns:
+
+```
+Error performing documentSymbol: Executable not found in $PATH: "csharp-roslyn-lsp"
+```
+
+Work around it by symlinking the launcher into `~/.local/bin`, which the LSP child process does see (no `sudo` required). Run in a shell:
+
+```bash
+plugin_dir="$HOME/.claude/plugins/cache/from2001-useful-skills/csharp-roslyn-lsp"
+latest="$(ls -1 "$plugin_dir" 2>/dev/null | sort -V | tail -n 1)"
+mkdir -p "$HOME/.local/bin"
+ln -sf "$plugin_dir/$latest/bin/csharp-roslyn-lsp" "$HOME/.local/bin/csharp-roslyn-lsp"
+echo "Linked: $HOME/.local/bin/csharp-roslyn-lsp -> $plugin_dir/$latest/bin/csharp-roslyn-lsp"
+```
+
+Restart Claude Code afterwards so the new `PATH` is picked up. Note that the cache path includes the installed plugin version (e.g. `1.1.0/bin`); when the plugin auto-updates to a new version the symlink will go stale — re-run the snippet to repoint it.
+
 ### Windows: one-time PATH setup
 
 Claude Code does not currently add a plugin's `bin/` directory to the LSP child process's `PATH` on Windows. Until that ships upstream, `child_process.spawn('csharp-roslyn-lsp')` cannot locate `csharp-roslyn-lsp.cmd` and Claude Code returns:
@@ -59,7 +79,7 @@ if (-not (($user -split ';') -contains $bin)) {
 }
 ```
 
-Restart Claude Code afterwards so the new `PATH` is picked up. Note that the cache path includes the installed plugin version (e.g. `1.0.0\bin`); when the plugin auto-updates to a new version the entry will go stale — re-run the snippet to repoint it.
+Restart Claude Code afterwards so the new `PATH` is picked up. Note that the cache path includes the installed plugin version (e.g. `1.1.0\bin`); when the plugin auto-updates to a new version the entry will go stale — re-run the snippet to repoint it.
 
 ## Verifying
 
@@ -72,6 +92,7 @@ The running process appears as a `dotnet` child hosting `Microsoft.CodeAnalysis.
 
 ## Troubleshooting
 
+- **`Executable not found in $PATH: "csharp-roslyn-lsp"` on macOS / Linux** — the plugin's `bin/` directory is not on the Claude Code LSP child-process `PATH`, even though it is on your interactive shell `PATH`. Run the shell snippet under **macOS / Linux: one-time PATH setup** above and restart Claude Code.
 - **`ENOENT: uv_spawn 'csharp-roslyn-lsp'` on Windows** — the plugin's `bin/` directory is not on the Claude Code child-process `PATH`. Run the PowerShell snippet under **Windows: one-time PATH setup** above and restart Claude Code.
 - **`VS Code C# extension not found`** — install the extension. The Unix launcher globs `~/.vscode/extensions/ms-dotnettools.csharp-*-<os>-<arch>`; the Windows launcher globs `%USERPROFILE%\.vscode\extensions\ms-dotnettools.csharp-*-win32-<arch>`. If you use a non-standard VS Code variant (e.g. a portable install), make sure that extensions directory exists.
 - **`no .NET host found`** — install either the VS Code C# extension (it brings a matching .NET runtime via `ms-dotnettools.vscode-dotnet-runtime`) or .NET 10+ system-wide. The Windows launcher additionally checks `%APPDATA%\Code\User\globalStorage\ms-dotnettools.vscode-dotnet-runtime\.dotnet\<ver>~<arch>~aspnetcore\dotnet.exe`.
